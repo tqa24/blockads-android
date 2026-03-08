@@ -84,6 +84,8 @@ improve the app.
 * [Android Studio](https://developer.android.com/studio) Ladybug or newer
 * JDK 17 or higher
 * Android SDK 36 (min SDK 24)
+* [Go](https://go.dev/doc/install) 1.21 or higher
+* [gomobile](https://pkg.go.dev/golang.org/x/mobile/cmd/gomobile)
 
 ### Steps
 
@@ -92,11 +94,25 @@ improve the app.
    git clone https://github.com/pass-with-high-score/blockads-android.git 
    cd blockads-android 
    ```
-2. Open the project in Android Studio
 
-3. Sync Gradle and run the app on a device or emulator
+2. Initialize gomobile (one-time setup):
+   ```bash
+   go install golang.org/x/mobile/cmd/gomobile@latest
+   export PATH=$PATH:$(go env GOPATH)/bin
+   gomobile init
+   ```
 
-4. Build from command line:
+3. **(Optional)** Build the Go tunnel AAR/JAR (with Android 15 16KB page size support):
+   ```bash
+   ./scripts/build_tunnel.sh
+   ```
+   *Note: A pre-built version is already included in `app/libs/`.*
+
+4. Open the project in Android Studio
+
+5. Sync Gradle and run the app on a device or emulator
+
+6. Build from command line:
    ```bash
    ./gradlew assembleDebug
    ./gradlew bundleRelease   # requires signing key

@@ -9,7 +9,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import tunnel.DomainChecker
-import tunnel.Engine
 import tunnel.LogCallback
 import tunnel.SocketProtector
 

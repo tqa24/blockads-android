@@ -29,6 +29,9 @@
 # Keep VPN service
 -keep class app.pwhs.blockads.service.** { *; }
 
+# Go tunnel (gomobile)
+-keep class tunnel.** { *; }
+
 # Coroutines
 -dontwarn kotlinx.coroutines.**
 

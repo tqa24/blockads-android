@@ -131,9 +131,6 @@ dependencies {
     // Accompanist
     implementation(libs.accompanist.drawablepainter)
 
-    // Guava for Bloom Filter
-    implementation(libs.guava)
-
     // WorkManager for auto-update
     implementation(libs.androidx.work.runtime.ktx)
 

@@ -12,13 +12,9 @@ import android.os.ParcelFileDescriptor
 import app.pwhs.blockads.MainActivity
 import app.pwhs.blockads.R
 import app.pwhs.blockads.data.datastore.AppPreferences
-import app.pwhs.blockads.data.dao.DnsErrorDao
-import app.pwhs.blockads.data.entities.DnsErrorEntry
-import app.pwhs.blockads.data.entities.DnsLogEntry
 import app.pwhs.blockads.data.repository.FilterListRepository
 import app.pwhs.blockads.data.dao.FirewallRuleDao
 import app.pwhs.blockads.util.BatteryMonitor
-import app.pwhs.blockads.util.AppNameResolver
 import app.pwhs.blockads.util.startOfDayMillis
 import app.pwhs.blockads.widget.AdBlockWidgetProvider
 import app.pwhs.blockads.worker.VpnResumeWorker
@@ -38,11 +34,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import timber.log.Timber
-import java.io.FileInputStream
-import java.io.FileOutputStream
-import java.net.DatagramPacket
-import java.net.DatagramSocket
-import java.net.InetAddress
+
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.ConcurrentHashMap
@@ -74,15 +66,12 @@ class AdBlockVpnService : VpnService() {
         private const val FIREWALL_CHANNEL_ID = "blockads_firewall_channel"
         private const val NETWORK_STABILIZATION_DELAY_MS = 2000L
         private const val RESTART_CLEANUP_DELAY_MS = 1000L
-        private const val MAX_PACKET_SIZE = 32767 // Maximum DNS packet size per RFC 1035
         const val ACTION_START = "app.pwhs.blockads.START_VPN"
         const val ACTION_STOP = "app.pwhs.blockads.STOP_VPN"
         const val ACTION_PAUSE_1H = "app.pwhs.blockads.PAUSE_VPN_1H"
         const val ACTION_RESTART = "app.pwhs.blockads.RESTART_VPN"
         private const val FIREWALL_NOTIFICATION_COOLDOWN_MS = 60_000L // 1 minute per app
         private const val FIREWALL_NOTIFICATION_ID_BASE = 1000
-        private const val DNS_ERROR_NOTIFICATION_ID = 2000
-        private const val DNS_ERROR_COOLDOWN_MS = 300_000L // 5 minutes
 
         /**
          * Request a VPN restart to apply new settings.
@@ -119,21 +108,17 @@ class AdBlockVpnService : VpnService() {
     private lateinit var filterRepo: FilterListRepository
     private lateinit var appPrefs: AppPreferences
     private lateinit var dnsLogDao: DnsLogDao
-    private lateinit var dnsErrorDao: DnsErrorDao
     private lateinit var goTunnelAdapter: GoTunnelAdapter
     private var networkMonitor: NetworkMonitor? = null
     private val retryManager =
         VpnRetryManager(maxRetries = 5, initialDelayMs = 1000L, maxDelayMs = 60000L)
     private lateinit var batteryMonitor: BatteryMonitor
-    private lateinit var appNameResolver: AppNameResolver
     private lateinit var notificationHelper: NotificationHelper
     private var firewallManager: FirewallManager? = null
     private lateinit var firewallRuleDao: FirewallRuleDao
     private var batteryMonitoringJob: kotlinx.coroutines.Job? = null
     private var notificationUpdateJob: kotlinx.coroutines.Job? = null
 
-    private val totalQueries = AtomicLong(0)
-    private val blockedQueries = AtomicLong(0)
     private var vpnStartTime: Long = 0L
 
     @Volatile
@@ -146,27 +131,12 @@ class AdBlockVpnService : VpnService() {
     private var nextMilestoneThreshold: Long? = null
 
     @Volatile
-    private var isProcessing = false
-
-    @Volatile
     private var isReconnecting = false
-
-    // Rate-limit DNS error notifications to avoid flooding
-    @Volatile
-    private var lastDnsErrorNotificationTime = 0L
-    private val consecutiveDnsFailures = AtomicLong(0)
 
     /** Current connecting phase for progress notification */
     @Volatile
     var connectingPhase: String = ""
         private set
-
-    /**
-     * Lazily populated SafeSearch IP cache.
-     * Populated on-demand when the first matching DNS query is received,
-     * instead of blocking VPN startup.
-     */
-    private val safeSearchIpCache = ConcurrentHashMap<String, ByteArray>()
 
     override fun onCreate() {
         super.onCreate()
@@ -174,13 +144,11 @@ class AdBlockVpnService : VpnService() {
         filterRepo = koin.get()
         appPrefs = koin.get()
         dnsLogDao = koin.get()
-        dnsErrorDao = koin.get()
         
         goTunnelAdapter = GoTunnelAdapter(this, filterRepo, dnsLogDao, serviceScope)
         
         firewallRuleDao = koin.get()
         batteryMonitor = BatteryMonitor(this)
-        appNameResolver = AppNameResolver(this)
         notificationHelper = NotificationHelper(this, appPrefs)
 
         // Initialize network monitor
@@ -223,7 +191,6 @@ class AdBlockVpnService : VpnService() {
         Timber.d("Restarting VPN to apply new settings")
 
         // Stop packet processing
-        isProcessing = false
         isRunning = false
         isConnecting = false
         isReconnecting = true
@@ -354,9 +321,6 @@ class AdBlockVpnService : VpnService() {
                     }
                 }
 
-                // SafeSearch IPs are resolved lazily on first matching DNS query
-                // (removed from startup to eliminate 1-15s blocking)
-                safeSearchIpCache.clear()
 
                 // ── Phase 3: Establish VPN tunnel ──
                 connectingPhase = getString(R.string.vpn_phase_establishing)
@@ -389,8 +353,6 @@ class AdBlockVpnService : VpnService() {
                 connectingPhase = ""
                 isRunning = true
                 appPrefs.setVpnEnabled(true)
-                totalQueries.set(0)
-                blockedQueries.set(0)
                 vpnStartTime = System.currentTimeMillis()
                 startTimestamp = vpnStartTime
 
@@ -556,7 +518,6 @@ class AdBlockVpnService : VpnService() {
     }
 
     private fun stopVpn(showStoppedNotification: Boolean = true) {
-        isProcessing = false
         isConnecting = false
         isRunning = false
         isReconnecting = false
@@ -612,7 +573,6 @@ class AdBlockVpnService : VpnService() {
     }
 
     override fun onDestroy() {
-        isProcessing = false
         isConnecting = false
         isRunning = false
         isReconnecting = false
@@ -679,54 +639,6 @@ class AdBlockVpnService : VpnService() {
             val manager = getSystemService(NotificationManager::class.java)
             manager.createNotificationChannel(channel)
         }
-    }
-
-    private fun sendDnsErrorNotification(upstreamDns: String, fallbackDns: String, protocol: DnsProtocol) {
-        val now = System.currentTimeMillis()
-        if ((now - lastDnsErrorNotificationTime) < DNS_ERROR_COOLDOWN_MS) return
-        lastDnsErrorNotificationTime = now
-
-        createAlertNotificationChannel()
-
-        val intent = Intent(this, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
-        }
-        val pendingIntent = PendingIntent.getActivity(
-            this, 4, intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
-        val protocolName = when (protocol) {
-            DnsProtocol.DOH -> "DoH"
-            DnsProtocol.DOT -> "DoT"
-            DnsProtocol.DOQ -> "DoQ"
-            DnsProtocol.PLAIN -> "Plain"
-        }
-        val title = getString(R.string.dns_error_notification_title)
-        val text = if (fallbackDns.isBlank()) {
-            getString(R.string.dns_error_notification_no_fallback, protocolName, upstreamDns)
-        } else {
-            getString(R.string.dns_error_notification_both_failed, protocolName, upstreamDns, fallbackDns)
-        }
-
-        val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            Notification.Builder(this, ALERT_CHANNEL_ID)
-        } else {
-            @Suppress("DEPRECATION")
-            Notification.Builder(this)
-        }
-
-        val notification = builder
-            .setContentTitle(title)
-            .setContentText(text)
-            .setStyle(Notification.BigTextStyle().bigText(text))
-            .setSmallIcon(R.drawable.ic_error)
-            .setAutoCancel(true)
-            .setContentIntent(pendingIntent)
-            .build()
-
-        val notificationManager = getSystemService(NotificationManager::class.java)
-        notificationManager.notify(DNS_ERROR_NOTIFICATION_ID, notification)
     }
 
     // Rate-limit firewall notifications to avoid flooding

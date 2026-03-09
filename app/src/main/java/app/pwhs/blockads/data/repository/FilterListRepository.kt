@@ -762,9 +762,11 @@ class FilterListRepository(
             }
             .forEach { line ->
                 when {
-                    line.startsWith("0.0.0.0 ") || line.startsWith("127.0.0.1 ") -> {
-                        val domain = line.substringAfter(' ').trim()
-                            .split("\\s+".toRegex()).firstOrNull()
+                    // Hosts format: "0.0.0.0<whitespace>domain" or "127.0.0.1<whitespace>domain"
+                    // Use regex split to handle both spaces and tabs (e.g. URLhaus uses tabs)
+                    line.startsWith("0.0.0.0") || line.startsWith("127.0.0.1") -> {
+                        val parts = line.split("\\s+".toRegex())
+                        val domain = parts.getOrNull(1)?.trim()
                         if (!domain.isNullOrBlank() && domain != "localhost") {
                             trie.add(domain.lowercase())
                         }
@@ -780,7 +782,7 @@ class FilterListRepository(
                         }
                     }
 
-                    !line.contains(' ') && !line.contains('/') -> {
+                    !line.contains(' ') && !line.contains('\t') && !line.contains('/') -> {
                         // Allow wildcards (e.g., *.ads.example.com) and regular/short domains
                         var domain = line.lowercase()
                         if (domain.endsWith("^")) {
@@ -812,9 +814,8 @@ class FilterListRepository(
                     .forEach { line ->
                         if (domains.size >= limit) return@forEach
                         val domain = when {
-                            line.startsWith("0.0.0.0 ") || line.startsWith("127.0.0.1 ") -> {
-                                line.substringAfter(' ').trim()
-                                    .split("\\s+".toRegex()).firstOrNull()
+                            line.startsWith("0.0.0.0") || line.startsWith("127.0.0.1") -> {
+                                line.split("\\s+".toRegex()).getOrNull(1)?.trim()
                                     ?.takeIf { it.isNotBlank() && it != "localhost" }
                             }
 
@@ -823,7 +824,7 @@ class FilterListRepository(
                                     .takeIf { it.isNotBlank() && it.contains('.') }
                             }
 
-                            line.contains('.') && !line.contains(' ') && !line.contains('/') -> {
+                            line.contains('.') && !line.contains(' ') && !line.contains('\t') && !line.contains('/') -> {
                                 line.lowercase()
                             }
 

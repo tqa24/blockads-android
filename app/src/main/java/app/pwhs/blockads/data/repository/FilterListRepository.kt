@@ -157,6 +157,43 @@ class FilterListRepository(
                 isEnabled = false,
                 isBuiltIn = true
             ),
+            // ── Hagezi DNS Blocklists ────────────────────────────────────
+            FilterList(
+                name = "Hagezi Light",
+                url = "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/hosts/light.txt",
+                description = "Hagezi Light — basic ad & tracker blocking with minimal false positives",
+                isEnabled = false,
+                isBuiltIn = true
+            ),
+            FilterList(
+                name = "Hagezi Normal",
+                url = "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/hosts/multi.txt",
+                description = "Hagezi Normal — all-round protection against ads, tracking & malware",
+                isEnabled = false,
+                isBuiltIn = true
+            ),
+            FilterList(
+                name = "Hagezi Pro",
+                url = "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/hosts/pro.txt",
+                description = "Hagezi Pro — extended protection, recommended for advanced users",
+                isEnabled = false,
+                isBuiltIn = true
+            ),
+            FilterList(
+                name = "Hagezi Pro++",
+                url = "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/hosts/pro.plus.txt",
+                description = "Hagezi Pro++ — aggressive blocking, may break some apps/sites",
+                isEnabled = false,
+                isBuiltIn = true
+            ),
+            FilterList(
+                name = "Hagezi TIF",
+                url = "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/hosts/tif.txt",
+                description = "Hagezi Threat Intelligence — blocks malware, phishing, scam & cryptojacking",
+                isEnabled = false,
+                isBuiltIn = true,
+                category = FilterList.CATEGORY_SECURITY
+            ),
             // ── Security / Phishing / Malware ───────────────────────────
             FilterList(
                 name = "URLhaus Malicious URL Blocklist",

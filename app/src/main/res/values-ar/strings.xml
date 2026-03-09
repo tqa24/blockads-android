@@ -490,4 +490,5 @@
     <string name="firewall_app_not_blocked">الإنترنت مسموح به</string>
     <string name="firewall_rule_saved">تم حفظ قاعدة جدار الحماية</string>
     <string name="firewall_rule_removed">تمت إزالة قاعدة جدار الحماية</string>
+    <string name="copied_url">تم نسخ URL</string>
 </resources>

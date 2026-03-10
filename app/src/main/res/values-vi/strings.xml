@@ -524,4 +524,7 @@
     <string name="filter_error_invalid_content">URL không chứa danh sách bộ lọc hợp lệ</string>
 
 
+    <string name="filter_chip_all">Tất cả</string>
+    <string name="filter_chip_enabled">Đã bật</string>
+    <string name="filter_chip_disabled">Đã tắt</string>
 </resources>

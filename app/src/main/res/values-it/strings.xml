@@ -530,4 +530,7 @@
     <string name="vpn_phase_preparing_dns">Preparing DNS…</string>
     <string name="vpn_phase_establishing">Establishing VPN tunnel…</string>
 
+    <string name="filter_chip_all">Tutti</string>
+    <string name="filter_chip_enabled">Attivati</string>
+    <string name="filter_chip_disabled">Disattivati</string>
 </resources>

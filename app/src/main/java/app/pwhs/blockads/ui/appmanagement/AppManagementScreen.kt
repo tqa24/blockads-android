@@ -3,6 +3,7 @@ package app.pwhs.blockads.ui.appmanagement
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -15,14 +16,20 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SecondaryTabRow
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
@@ -32,6 +39,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,6 +55,7 @@ import app.pwhs.blockads.ui.theme.TextSecondary
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
+import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 
 @Destination<RootGraph>
@@ -63,6 +72,23 @@ fun AppManagementScreen(
     val sortOption by viewModel.sortOption.collectAsStateWithLifecycle()
     val totalAppCount by viewModel.totalAppCount.collectAsStateWithLifecycle()
     var showSortMenu by remember { mutableStateOf(false) }
+    // 0 = All, 1 = Enabled (whitelisted), 2 = Disabled
+    var filterOption by remember { mutableStateOf(0) }
+
+    val userApps = remember(apps) {
+        apps.filter { !it.isSystemApp }
+    }
+    val systemApps = remember(apps) {
+        apps.filter { it.isSystemApp }
+    }
+
+    val pagerState = rememberPagerState(pageCount = { 2 })
+    val coroutineScope = rememberCoroutineScope()
+
+    val tabs = listOf(
+        stringResource(R.string.whitelist_tab_user),
+        stringResource(R.string.whitelist_tab_system)
+    )
 
     Scaffold(
         modifier = modifier,
@@ -185,6 +211,71 @@ fun AppManagementScreen(
                 singleLine = true
             )
 
+            // Filter chips
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                FilterChip(
+                    selected = filterOption == 0,
+                    onClick = { filterOption = 0 },
+                    label = { Text(stringResource(R.string.filter_chip_all)) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.primary,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                )
+                FilterChip(
+                    selected = filterOption == 1,
+                    onClick = { filterOption = 1 },
+                    label = { Text(stringResource(R.string.filter_chip_enabled)) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.primary,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                )
+                FilterChip(
+                    selected = filterOption == 2,
+                    onClick = { filterOption = 2 },
+                    label = { Text(stringResource(R.string.filter_chip_disabled)) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.primary,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                )
+            }
+
+            // Tabs
+            SecondaryTabRow(
+                selectedTabIndex = pagerState.currentPage,
+                containerColor = MaterialTheme.colorScheme.background,
+                contentColor = MaterialTheme.colorScheme.primary,
+            ) {
+                tabs.forEachIndexed { index, title ->
+                    val count = when (index) {
+                        0 -> userApps.size
+                        else -> systemApps.size
+                    }
+                    Tab(
+                        selected = pagerState.currentPage == index,
+                        onClick = {
+                            coroutineScope.launch {
+                                pagerState.animateScrollToPage(index)
+                            }
+                        },
+                        text = {
+                            Text(
+                                "$title ($count)",
+                                fontWeight = if (pagerState.currentPage == index)
+                                    FontWeight.Bold else FontWeight.Normal
+                            )
+                        }
+                    )
+                }
+            }
+
             if (isLoading) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
@@ -205,15 +296,45 @@ fun AppManagementScreen(
                     }
                 }
             } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
-                ) {
-                    items(apps, key = { it.packageName }) { app ->
-                        AppManagementItem(
-                            app = app,
-                            onToggle = { viewModel.toggleApp(app.packageName) }
-                        )
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier.fillMaxSize()
+                ) { page ->
+                    val appsForPage = when (page) {
+                        0 -> userApps
+                        else -> systemApps
+                    }
+                    val filteredApps = remember(appsForPage, filterOption) {
+                        when (filterOption) {
+                            1 -> appsForPage.filter { it.isWhitelisted }
+                            2 -> appsForPage.filter { !it.isWhitelisted }
+                            else -> appsForPage
+                        }
+                    }
+
+                    if (filteredApps.isEmpty()) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                stringResource(R.string.whitelist_apps_empty),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = TextSecondary
+                            )
+                        }
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            items(filteredApps, key = { it.packageName }) { app ->
+                                AppManagementItem(
+                                    app = app,
+                                    onToggle = { viewModel.toggleApp(app.packageName) }
+                                )
+                            }
+                        }
                     }
                 }
             }

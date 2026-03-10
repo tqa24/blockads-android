@@ -541,5 +541,8 @@
     <string name="filter_error_invalid_url">Please enter a valid URL (http:// or https://)</string>
     <string name="filter_error_duplicate_url">This filter list already exists</string>
     <string name="filter_error_invalid_content">URL does not contain a valid filter list</string>
+    <string name="filter_chip_all">All</string>
+    <string name="filter_chip_enabled">Enabled</string>
+    <string name="filter_chip_disabled">Disabled</string>
 
 </resources>

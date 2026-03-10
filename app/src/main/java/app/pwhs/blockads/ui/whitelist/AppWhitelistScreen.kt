@@ -3,6 +3,7 @@ package app.pwhs.blockads.ui.whitelist
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,6 +19,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -63,6 +66,8 @@ fun AppWhitelistScreen(
     val installedApps by viewModel.installedApps.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     var searchQuery by remember { mutableStateOf("") }
+    // 0 = All, 1 = Enabled, 2 = Disabled
+    var filterOption by remember { mutableStateOf(0) }
 
     val userApps = remember(installedApps) {
         installedApps.filter { !it.isSystemApp }
@@ -145,6 +150,42 @@ fun AppWhitelistScreen(
                 singleLine = true
             )
 
+            // Filter chips
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                FilterChip(
+                    selected = filterOption == 0,
+                    onClick = { filterOption = 0 },
+                    label = { Text(stringResource(R.string.filter_chip_all)) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.primary,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                )
+                FilterChip(
+                    selected = filterOption == 1,
+                    onClick = { filterOption = 1 },
+                    label = { Text(stringResource(R.string.filter_chip_enabled)) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.primary,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                )
+                FilterChip(
+                    selected = filterOption == 2,
+                    onClick = { filterOption = 2 },
+                    label = { Text(stringResource(R.string.filter_chip_disabled)) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.primary,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                )
+            }
+
             // Tabs
             SecondaryTabRow(
                 selectedTabIndex = pagerState.currentPage,
@@ -203,11 +244,17 @@ fun AppWhitelistScreen(
                         0 -> userApps
                         else -> systemApps
                     }
-                    val filteredApps = remember(searchQuery, appsForPage) {
-                        if (searchQuery.isBlank()) appsForPage
-                        else appsForPage.filter {
-                            it.label.contains(searchQuery, ignoreCase = true) ||
-                                    it.packageName.contains(searchQuery, ignoreCase = true)
+                    val filteredApps = remember(searchQuery, appsForPage, whitelistedApps, filterOption) {
+                        appsForPage.filter { app ->
+                            val matchesSearch = searchQuery.isBlank() ||
+                                    app.label.contains(searchQuery, ignoreCase = true) ||
+                                    app.packageName.contains(searchQuery, ignoreCase = true)
+                            val matchesFilter = when (filterOption) {
+                                1 -> app.packageName in whitelistedApps
+                                2 -> app.packageName !in whitelistedApps
+                                else -> true
+                            }
+                            matchesSearch && matchesFilter
                         }
                     }
 

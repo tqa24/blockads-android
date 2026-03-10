@@ -524,4 +524,7 @@
     <string name="filter_error_invalid_content">URL не содержит корректный список фильтров</string>
 
 
+    <string name="filter_chip_all">Все</string>
+    <string name="filter_chip_enabled">Включённые</string>
+    <string name="filter_chip_disabled">Отключённые</string>
 </resources>

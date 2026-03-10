@@ -477,4 +477,7 @@
     <string name="settings_detected_dot">DNS-over-TLS (DoT)</string>
     <string name="settings_detected_doq">DNS-over-QUIC (DoQ)</string>
 
+    <string name="filter_chip_all">전체</string>
+    <string name="filter_chip_enabled">활성화</string>
+    <string name="filter_chip_disabled">비활성화</string>
 </resources>

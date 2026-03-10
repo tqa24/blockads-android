@@ -22,6 +22,8 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -72,6 +74,8 @@ fun FirewallScreen(
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     var searchQuery by remember { mutableStateOf("") }
     var configurePackage by remember { mutableStateOf<String?>(null) }
+    // 0 = All, 1 = Enabled (blocked), 2 = Disabled
+    var filterOption by remember { mutableStateOf(0) }
 
     val rulesMap = remember(firewallRules) {
         firewallRules.associateBy { it.packageName }
@@ -224,6 +228,42 @@ fun FirewallScreen(
                 singleLine = true
             )
 
+            // Filter chips
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                FilterChip(
+                    selected = filterOption == 0,
+                    onClick = { filterOption = 0 },
+                    label = { Text(stringResource(R.string.filter_chip_all)) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.primary,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                )
+                FilterChip(
+                    selected = filterOption == 1,
+                    onClick = { filterOption = 1 },
+                    label = { Text(stringResource(R.string.filter_chip_enabled)) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.primary,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                )
+                FilterChip(
+                    selected = filterOption == 2,
+                    onClick = { filterOption = 2 },
+                    label = { Text(stringResource(R.string.filter_chip_disabled)) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.primary,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                )
+            }
+
             // Tabs
             SecondaryTabRow(
                 selectedTabIndex = pagerState.currentPage,
@@ -281,11 +321,17 @@ fun FirewallScreen(
                         0 -> userApps
                         else -> systemApps
                     }
-                    val filteredApps = remember(searchQuery, appsForPage) {
-                        if (searchQuery.isBlank()) appsForPage
-                        else appsForPage.filter {
-                            it.label.contains(searchQuery, ignoreCase = true) ||
-                                    it.packageName.contains(searchQuery, ignoreCase = true)
+                    val filteredApps = remember(searchQuery, appsForPage, rulesMap, filterOption) {
+                        appsForPage.filter { app ->
+                            val matchesSearch = searchQuery.isBlank() ||
+                                    app.label.contains(searchQuery, ignoreCase = true) ||
+                                    app.packageName.contains(searchQuery, ignoreCase = true)
+                            val matchesFilter = when (filterOption) {
+                                1 -> app.packageName in rulesMap
+                                2 -> app.packageName !in rulesMap
+                                else -> true
+                            }
+                            matchesSearch && matchesFilter
                         }
                     }
 

@@ -477,4 +477,7 @@
     <string name="settings_detected_protocol">Detected: %s</string>
     <string name="settings_invalid_dns_input">Invalid DNS server address</string>
 
+    <string name="filter_chip_all">全部</string>
+    <string name="filter_chip_enabled">已启用</string>
+    <string name="filter_chip_disabled">已禁用</string>
 </resources>

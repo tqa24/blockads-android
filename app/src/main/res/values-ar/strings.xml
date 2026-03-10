@@ -492,4 +492,7 @@
     <string name="firewall_rule_saved">تم حفظ قاعدة جدار الحماية</string>
     <string name="firewall_rule_removed">تمت إزالة قاعدة جدار الحماية</string>
     <string name="copied_url">تم نسخ URL</string>
+    <string name="filter_chip_all">الكل</string>
+    <string name="filter_chip_enabled">مفعّل</string>
+    <string name="filter_chip_disabled">معطّل</string>
 </resources>

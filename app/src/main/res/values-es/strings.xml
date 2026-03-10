@@ -477,4 +477,7 @@
     <string name="filter_error_duplicate_url">This filter list already exists</string>
     <string name="filter_error_invalid_content">URL does not contain a valid filter list</string>
 
+    <string name="filter_chip_all">Todos</string>
+    <string name="filter_chip_enabled">Activados</string>
+    <string name="filter_chip_disabled">Desactivados</string>
 </resources>

@@ -480,4 +480,7 @@
     <string name="filter_chip_all">Todos</string>
     <string name="filter_chip_enabled">Activados</string>
     <string name="filter_chip_disabled">Desactivados</string>
+    <string name="profile_name_custom">Personalizado</string>
+    <string name="profile_name_strict_family">Familia Estricta</string>
+    <string name="profile_desc_strict_family">Bloqueo máximo: anuncios, rastreadores, contenido para adultos &amp; apuestas</string>
 </resources>

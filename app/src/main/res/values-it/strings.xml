@@ -533,4 +533,7 @@
     <string name="filter_chip_all">Tutti</string>
     <string name="filter_chip_enabled">Attivati</string>
     <string name="filter_chip_disabled">Disattivati</string>
+    <string name="profile_name_custom">Personalizzato</string>
+    <string name="profile_name_strict_family">Famiglia Rigorosa</string>
+    <string name="profile_desc_strict_family">Blocco massimo: annunci, tracker, contenuti per adulti &amp; gioco d\'azzardo</string>
 </resources>

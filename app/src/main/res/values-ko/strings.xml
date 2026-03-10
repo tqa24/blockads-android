@@ -480,4 +480,7 @@
     <string name="filter_chip_all">전체</string>
     <string name="filter_chip_enabled">활성화</string>
     <string name="filter_chip_disabled">비활성화</string>
+    <string name="profile_name_custom">사용자 지정</string>
+    <string name="profile_name_strict_family">엄격한 가족</string>
+    <string name="profile_desc_strict_family">최대 차단: 광고, 트래커, 성인 콘텐츠 및 도박</string>
 </resources>

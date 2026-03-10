@@ -480,4 +480,7 @@
     <string name="filter_chip_all">すべて</string>
     <string name="filter_chip_enabled">有効</string>
     <string name="filter_chip_disabled">無効</string>
+    <string name="profile_name_custom">カスタム</string>
+    <string name="profile_name_strict_family">厳格なファミリー</string>
+    <string name="profile_desc_strict_family">最大限のブロック: 広告、トラッカー、アダルトコンテンツ、ギャンブル</string>
 </resources>

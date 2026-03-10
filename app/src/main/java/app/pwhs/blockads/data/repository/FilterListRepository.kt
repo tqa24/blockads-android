@@ -116,13 +116,6 @@ class FilterListRepository(
                 isBuiltIn = true
             ),
             FilterList(
-                name = "uBlock filters",
-                url = "https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/filters.txt",
-                description = "uBlock Origin filters — blocks pop-ups, anti-adblock, and annoyances",
-                isEnabled = false,
-                isBuiltIn = true
-            ),
-            FilterList(
                 name = "AdGuard Base Filter",
                 url = "https://filters.adtidy.org/extension/ublock/filters/2.txt",
                 description = "AdGuard base ad filter — comprehensive alternative to EasyList",
@@ -140,13 +133,6 @@ class FilterListRepository(
                 name = "Fanboy's Annoyances",
                 url = "https://easylist.to/easylist/fanboy-annoyance.txt",
                 description = "Blocks cookie banners, pop-ups, newsletter prompts, and chat boxes",
-                isEnabled = false,
-                isBuiltIn = true
-            ),
-            FilterList(
-                name = "uBlock filters – Annoyances",
-                url = "https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/annoyances.txt",
-                description = "Blocks social media ads and suggestions on Facebook, YouTube, Twitter, etc.",
                 isEnabled = false,
                 isBuiltIn = true
             ),
@@ -397,17 +383,44 @@ class FilterListRepository(
     }
 
     /**
-     * Seeds default filter lists. Fetches all existing URLs in a single query,
-     * then only inserts missing ones. Skips entirely if all defaults are present.
+     * Seeds default filter lists. Updates existing ones and adds new ones.
+     * Also removes any built-in filters that are no longer in the DEFAULT_LISTS.
      */
     suspend fun seedDefaultsIfNeeded() {
-        val existingUrls = filterListDao.getAllUrls().toHashSet()
-        val toInsert = DEFAULT_LISTS.filter { it.url !in existingUrls }
-        if (toInsert.isEmpty()) return
+        val existingLists = filterListDao.getAllSync()
+        val existingMap = existingLists.associateBy { it.url }
 
-        for (filter in toInsert) {
-            filterListDao.insert(filter)
-            Timber.d("Seeded filter: ${filter.name}")
+        // Find which default lists need to be inserted or updated
+        for (defaultList in DEFAULT_LISTS) {
+            val existing = existingMap[defaultList.url]
+            if (existing == null) {
+                // Insert new built-in list
+                filterListDao.insert(defaultList)
+                Timber.d("Seeded new built-in filter: ${defaultList.name}")
+            } else if (existing.name != defaultList.name || 
+                existing.description != defaultList.description || 
+                existing.category != defaultList.category || 
+                !existing.isBuiltIn) {
+                // Update existing built-in list to match new default configuration
+                // Keep the isEnabled, domainCount, lastUpdated state from the existing list
+                filterListDao.update(
+                    existing.copy(
+                        name = defaultList.name,
+                        description = defaultList.description,
+                        category = defaultList.category,
+                        isBuiltIn = true
+                    )
+                )
+                Timber.d("Updated built-in filter info: ${defaultList.name}")
+            }
+        }
+
+        // Remove old built-in lists that are no longer in DEFAULT_LISTS
+        val defaultUrls = DEFAULT_LISTS.map { it.url }.toSet()
+        val obsoleteBuiltIn = existingLists.filter { it.isBuiltIn && it.url !in defaultUrls }
+        for (obsolete in obsoleteBuiltIn) {
+            filterListDao.delete(obsolete)
+            Timber.d("Removed obsolete built-in filter: ${obsolete.name}")
         }
     }
 

@@ -1,12 +1,12 @@
 package app.pwhs.blockads.data.entities
 
-import android.util.Log
 import app.pwhs.blockads.data.datastore.AppPreferences
 import app.pwhs.blockads.data.dao.FilterListDao
 import app.pwhs.blockads.data.repository.FilterListRepository
 import app.pwhs.blockads.data.dao.ProtectionProfileDao
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import timber.log.Timber
 
 class ProfileManager(
     private val profileDao: ProtectionProfileDao,
@@ -16,7 +16,6 @@ class ProfileManager(
 ) {
 
     companion object {
-        private const val TAG = "ProfileManager"
 
         /** URLs for the Default profile: basic ads & trackers. */
         val DEFAULT_FILTER_URLS = setOf(
@@ -31,10 +30,8 @@ class ProfileManager(
             "https://easylist.to/easylist/easylist.txt",
             "https://easylist.to/easylist/easyprivacy.txt",
             "https://pgl.yoyo.org/adservers/serverlist.php?hostformat=hosts&showintro=0&mimetype=plaintext",
-            "https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/filters.txt",
             "https://filters.adtidy.org/extension/ublock/filters/2.txt",
-            "https://filters.adtidy.org/extension/ublock/filters/11.txt",
-            "https://easylist.to/easylist/fanboy-annoyance.txt"
+            "https://filters.adtidy.org/extension/ublock/filters/11.txt"
         )
 
         /** URLs for the Family profile: ads + adult content + gambling. */
@@ -48,14 +45,17 @@ class ProfileManager(
             "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts",
             "https://easylist.to/easylist/easylist.txt"
         )
+
+        /** URLs for the Strict Family profile: maximum blocking (ads + trackers + adult + gambling). */
+        val STRICT_FAMILY_FILTER_URLS = STRICT_FILTER_URLS + FAMILY_FILTER_URLS
     }
 
     /**
-     * Seed preset profiles if none exist.
+     * Seed preset profiles if none exist, and add any missing ones.
      */
     suspend fun seedPresetsIfNeeded() = withContext(Dispatchers.IO) {
         val existing = profileDao.getAllSync()
-        if (existing.isNotEmpty()) return@withContext
+        val existingTypes = existing.map { it.profileType }.toSet()
 
         val presets = listOf(
             ProtectionProfile(
@@ -64,7 +64,7 @@ class ProfileManager(
                 enabledFilterUrls = DEFAULT_FILTER_URLS.joinToString(","),
                 safeSearchEnabled = false,
                 youtubeRestrictedMode = false,
-                isActive = true
+                isActive = existing.isEmpty()
             ),
             ProtectionProfile(
                 name = "Strict",
@@ -86,20 +86,49 @@ class ProfileManager(
                 enabledFilterUrls = GAMING_FILTER_URLS.joinToString(","),
                 safeSearchEnabled = false,
                 youtubeRestrictedMode = false
+            ),
+            ProtectionProfile(
+                name = "Strict Family",
+                profileType = ProtectionProfile.TYPE_STRICT_FAMILY,
+                enabledFilterUrls = STRICT_FAMILY_FILTER_URLS.joinToString(","),
+                safeSearchEnabled = true,
+                youtubeRestrictedMode = true
             )
         )
 
-        presets.forEach { profileDao.insert(it) }
-        Log.d(TAG, "Seeded ${presets.size} preset profiles")
-
-        // Ensure the Default profile is fully activated via the standard switch logic
-        val allProfiles = profileDao.getAllSync()
-        val defaultProfile = allProfiles.firstOrNull {
-            it.profileType == ProtectionProfile.TYPE_DEFAULT
+        val missingPresets = presets.filter { it.profileType !in existingTypes }
+        if (missingPresets.isNotEmpty()) {
+            missingPresets.forEach { profileDao.insert(it) }
+            Timber.d("Seeded ${missingPresets.size} missing preset profiles")
         }
-        if (defaultProfile != null) {
-            // Use switchToProfile so filters and preferences are consistent
-            switchToProfile(defaultProfile.id)
+
+        // Sync existing presets to ensure obsolete filters are removed and new ones added
+        val existingPresets = existing.filter { ProtectionProfile.isPreset(it.profileType) }
+        for (existingProfile in existingPresets) {
+            val expectedUrls = getFilterUrlsForType(existingProfile.profileType).joinToString(",")
+            val hasObsoleteUrls = existingProfile.enabledFilterUrls != expectedUrls
+            
+            // Only update if the URLs don't match exactly (this covers both additions and removals to the base preset)
+            if (hasObsoleteUrls) {
+                profileDao.update(
+                    existingProfile.copy(
+                        enabledFilterUrls = expectedUrls
+                    )
+                )
+                Timber.d("Updated URLs for existing preset profile: ${existingProfile.name}")
+            }
+        }
+
+        // Ensure the Default profile is fully activated via the standard switch logic during initial seed
+        if (existing.isEmpty()) {
+            val allProfiles = profileDao.getAllSync()
+            val defaultProfile = allProfiles.firstOrNull {
+                it.profileType == ProtectionProfile.TYPE_DEFAULT
+            }
+            if (defaultProfile != null) {
+                // Use switchToProfile so filters and preferences are consistent
+                switchToProfile(defaultProfile.id)
+            }
         }
     }
 
@@ -109,7 +138,7 @@ class ProfileManager(
      */
     suspend fun switchToProfile(profileId: Long) = withContext(Dispatchers.IO) {
         val profile = profileDao.getById(profileId) ?: return@withContext
-        Log.d(TAG, "Switching to profile: ${profile.name} (${profile.profileType})")
+        Timber.d("Switching to profile: ${profile.name} (${profile.profileType})")
 
         // Deactivate all and activate the chosen profile
         profileDao.deactivateAll()
@@ -140,7 +169,7 @@ class ProfileManager(
         // Reload filters
         filterRepo.loadAllEnabledFilters()
 
-        Log.d(TAG, "Switched to profile: ${profile.name}")
+        Timber.d("Switched to profile: ${profile.name}")
     }
 
     /**
@@ -151,6 +180,7 @@ class ProfileManager(
         ProtectionProfile.TYPE_STRICT -> STRICT_FILTER_URLS
         ProtectionProfile.TYPE_FAMILY -> FAMILY_FILTER_URLS
         ProtectionProfile.TYPE_GAMING -> GAMING_FILTER_URLS
+        ProtectionProfile.TYPE_STRICT_FAMILY -> STRICT_FAMILY_FILTER_URLS
         else -> emptySet()
     }
 }

@@ -442,11 +442,14 @@
     <string name="profile_name_strict">Строгий</string>
     <string name="profile_name_family">Семейный</string>
     <string name="profile_name_gaming">Игровой</string>
+    <string name="profile_name_custom">Пользовательский</string>
+    <string name="profile_name_strict_family">Строгий + Семья</string>
     <string name="profile_desc_default">Блокировка рекламы и базовых трекеров</string>
     <string name="profile_desc_strict">Блокировка всей рекламы, трекеров и аналитики</string>
     <string name="profile_desc_family">Блокировка рекламы + контент 18+ + азартные игры</string>
     <string name="profile_desc_gaming">Блокировка рекламы с оптимизацией для игр</string>
     <string name="profile_desc_custom">Пользовательская конфигурация профиля</string>
+    <string name="profile_desc_strict_family">Максимальная блокировка: реклама, трекеры, контент 18+ и азартные игры</string>
     <string name="profile_active">Активен</string>
     <string name="profile_switched">Профиль переключён</string>
     <string name="profile_created">Профиль создан</string>

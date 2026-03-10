@@ -4,6 +4,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FamilyRestroom
 import androidx.compose.material.icons.filled.GppGood
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.runtime.Composable
@@ -102,6 +103,7 @@ fun profileIcon(type: String): ImageVector = when (type) {
     ProtectionProfile.TYPE_DEFAULT -> Icons.Default.GppGood
     ProtectionProfile.TYPE_STRICT -> Icons.Default.Security
     ProtectionProfile.TYPE_FAMILY -> Icons.Default.FamilyRestroom
+    ProtectionProfile.TYPE_STRICT_FAMILY -> Icons.Default.Shield
     ProtectionProfile.TYPE_GAMING -> Icons.Default.SportsEsports
     else -> Icons.Default.Tune
 }
@@ -111,6 +113,7 @@ fun profileDescription(type: String): String = when (type) {
     ProtectionProfile.TYPE_DEFAULT -> stringResource(R.string.profile_desc_default)
     ProtectionProfile.TYPE_STRICT -> stringResource(R.string.profile_desc_strict)
     ProtectionProfile.TYPE_FAMILY -> stringResource(R.string.profile_desc_family)
+    ProtectionProfile.TYPE_STRICT_FAMILY -> stringResource(R.string.profile_desc_strict_family)
     ProtectionProfile.TYPE_GAMING -> stringResource(R.string.profile_desc_gaming)
     else -> stringResource(R.string.profile_desc_custom)
 }
@@ -120,6 +123,7 @@ fun profileDisplayName(profile: ProtectionProfile): String = when (profile.profi
     ProtectionProfile.TYPE_DEFAULT -> stringResource(R.string.profile_name_default)
     ProtectionProfile.TYPE_STRICT -> stringResource(R.string.profile_name_strict)
     ProtectionProfile.TYPE_FAMILY -> stringResource(R.string.profile_name_family)
+    ProtectionProfile.TYPE_STRICT_FAMILY -> stringResource(R.string.profile_name_strict_family)
     ProtectionProfile.TYPE_GAMING -> stringResource(R.string.profile_name_gaming)
     else -> profile.name
 }

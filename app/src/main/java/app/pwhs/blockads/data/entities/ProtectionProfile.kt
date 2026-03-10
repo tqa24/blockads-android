@@ -20,9 +20,10 @@ data class ProtectionProfile(
         const val TYPE_STRICT = "STRICT"
         const val TYPE_FAMILY = "FAMILY"
         const val TYPE_GAMING = "GAMING"
+        const val TYPE_STRICT_FAMILY = "STRICT_FAMILY"
         const val TYPE_CUSTOM = "CUSTOM"
 
         fun isPreset(type: String): Boolean =
-            type in listOf(TYPE_DEFAULT, TYPE_STRICT, TYPE_FAMILY, TYPE_GAMING)
+            type in listOf(TYPE_DEFAULT, TYPE_STRICT, TYPE_FAMILY, TYPE_GAMING, TYPE_STRICT_FAMILY)
     }
 }

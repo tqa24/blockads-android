@@ -654,5 +654,6 @@ private fun profileDisplayName(profile: ProtectionProfile): String = when (profi
     ProtectionProfile.TYPE_STRICT -> stringResource(R.string.profile_name_strict)
     ProtectionProfile.TYPE_FAMILY -> stringResource(R.string.profile_name_family)
     ProtectionProfile.TYPE_GAMING -> stringResource(R.string.profile_name_gaming)
+    ProtectionProfile.TYPE_STRICT_FAMILY -> stringResource(R.string.profile_name_strict_family)
     else -> profile.name
 }

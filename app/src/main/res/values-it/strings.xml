@@ -545,4 +545,7 @@
     <string name="blocklist_domain_added">Dominio bloccato: %s</string>
     <string name="blocklist_domain_removed">Dominio rimosso dalla lista di blocco</string>
     <string name="blocklist_domain_already_exists">Il dominio è già bloccato</string>
+
+    <string name="settings_show_bottom_nav_labels">Mostra etichette di navigazione</string>
+    <string name="settings_show_bottom_nav_labels_desc">Mostra il testo sotto le icone nella barra di navigazione inferiore</string>
 </resources>

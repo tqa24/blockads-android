@@ -492,4 +492,7 @@
     <string name="blocklist_domain_added">도메인 차단됨: %s</string>
     <string name="blocklist_domain_removed">차단 목록에서 도메인 제거됨</string>
     <string name="blocklist_domain_already_exists">도메인이 이미 차단되어 있습니다</string>
+
+    <string name="settings_show_bottom_nav_labels">하단 탐색 라벨 표시</string>
+    <string name="settings_show_bottom_nav_labels_desc">하단 탐색 메뉴의 아이콘 아래에 텍스트 표시</string>
 </resources>

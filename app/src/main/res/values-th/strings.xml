@@ -492,4 +492,7 @@
     <string name="blocklist_domain_added">บล็อกโดเมนแล้ว: %s</string>
     <string name="blocklist_domain_removed">ลบโดเมนออกจากรายการบล็อกแล้ว</string>
     <string name="blocklist_domain_already_exists">โดเมนนี้ถูกบล็อกอยู่แล้ว</string>
+
+    <string name="settings_show_bottom_nav_labels">แสดงป้ายกำกับการนำทางด้านล่าง</string>
+    <string name="settings_show_bottom_nav_labels_desc">แสดงข้อความใต้ไอคอนในแถบการนำทางด้านล่าง</string>
 </resources>

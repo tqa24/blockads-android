@@ -539,4 +539,7 @@
     <string name="blocklist_domain_added">Đã chặn tên miền: %s</string>
     <string name="blocklist_domain_removed">Đã gỡ tên miền khỏi danh sách chặn</string>
     <string name="blocklist_domain_already_exists">Tên miền đã có trong danh sách chặn</string>
+
+    <string name="settings_show_bottom_nav_labels">Hiển thị chữ ở thanh điều hướng</string>
+    <string name="settings_show_bottom_nav_labels_desc">Hiển thị văn bản bên dưới biểu tượng ở thanh điều hướng dưới cùng</string>
 </resources>

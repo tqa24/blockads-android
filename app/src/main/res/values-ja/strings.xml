@@ -492,4 +492,7 @@
     <string name="blocklist_domain_removed">ブロックリストから削除しました</string>
     <string name="blocklist_domain_already_exists">ドメインはすでにブロックされています</string>
 
+    <string name="settings_show_bottom_nav_labels">ボトムナビゲーションのラベルを表示</string>
+    <string name="settings_show_bottom_nav_labels_desc">ボトムナビゲーションのアイコンの下にテキストを表示する</string>
+
 </resources>

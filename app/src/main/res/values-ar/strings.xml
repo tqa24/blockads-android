@@ -508,4 +508,7 @@
     <string name="blocklist_domain_added">تم حظر النطاق: %s</string>
     <string name="blocklist_domain_removed">تم إزالة النطاق من قائمة الحظر</string>
     <string name="blocklist_domain_already_exists">النطاق محظور بالفعل</string>
+
+    <string name="settings_show_bottom_nav_labels">إظهار تسميات التنقل السفلي</string>
+    <string name="settings_show_bottom_nav_labels_desc">عرض النص أسفل الرموز في شريط التنقل السفلي</string>
 </resources>

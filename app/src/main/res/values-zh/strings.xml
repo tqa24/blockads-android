@@ -492,4 +492,7 @@
     <string name="blocklist_domain_added">已拦截域名：%s</string>
     <string name="blocklist_domain_removed">域名已从拦截列表中移除</string>
     <string name="blocklist_domain_already_exists">域名已在拦截列表中</string>
+
+    <string name="settings_show_bottom_nav_labels">显示底部导航标签</string>
+    <string name="settings_show_bottom_nav_labels_desc">在底部导航栏的图标下方显示文字</string>
 </resources>

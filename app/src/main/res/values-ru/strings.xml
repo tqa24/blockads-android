@@ -538,4 +538,7 @@
     <string name="blocklist_domain_added">Домен заблокирован: %s</string>
     <string name="blocklist_domain_removed">Домен удален из списка блокировки</string>
     <string name="blocklist_domain_already_exists">Домен уже находится в списке блокировки</string>
+
+    <string name="settings_show_bottom_nav_labels">Показывать подписи нижней панели</string>
+    <string name="settings_show_bottom_nav_labels_desc">Отображать текст под значками на нижней панели навигации</string>
 </resources>

@@ -564,4 +564,6 @@ Desteklenen formatlar:
     <string name="blocklist_domain_removed">Alan adı engelleme listesinden kaldırıldı</string>
     <string name="blocklist_domain_already_exists">Alan adı zaten engellenmiş</string>
 
+    <string name="settings_show_bottom_nav_labels">Alt Gezinme Etiketlerini Göster</string>
+    <string name="settings_show_bottom_nav_labels_desc">Alt gezinme çubuğunda simgelerin altında metin göster</string>
 </resources>

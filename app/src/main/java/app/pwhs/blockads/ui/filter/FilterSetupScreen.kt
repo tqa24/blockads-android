@@ -60,20 +60,15 @@ import app.pwhs.blockads.ui.filter.component.AddFilterDialog
 import app.pwhs.blockads.ui.filter.component.FilterItem
 import app.pwhs.blockads.ui.filter.component.SectionHeader
 import app.pwhs.blockads.ui.theme.TextSecondary
-import com.ramcosta.composedestinations.annotation.Destination
-import com.ramcosta.composedestinations.annotation.RootGraph
-import com.ramcosta.composedestinations.generated.destinations.CustomRulesScreenDestination
-import com.ramcosta.composedestinations.generated.destinations.FilterDetailScreenDestination
-import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import org.koin.androidx.compose.koinViewModel
 
-@Destination<RootGraph>
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FilterSetupScreen(
-    navigator: DestinationsNavigator,
     modifier: Modifier = Modifier,
-    viewModel: FilterSetupViewModel = koinViewModel()
+    viewModel: FilterSetupViewModel = koinViewModel(),
+    onNavigateToFilterDetail: (filterId: Long) -> Unit = { },
+    onNavigateToCustomRules: () -> Unit = { }
 ) {
     val filterLists by viewModel.filteredFilterLists.collectAsStateWithLifecycle()
     val isUpdatingFilter by viewModel.isUpdatingFilter.collectAsStateWithLifecycle()
@@ -253,9 +248,7 @@ fun FilterSetupScreen(
                                             onToggle = { viewModel.toggleFilterList(filter) },
                                             onDelete = null,
                                             onClick = {
-                                                navigator.navigate(
-                                                    FilterDetailScreenDestination(filterId = filter.id)
-                                                )
+                                                onNavigateToFilterDetail(filter.id)
                                             }
                                         )
                                         if (index < adFilters.lastIndex) {
@@ -292,9 +285,7 @@ fun FilterSetupScreen(
                                             onToggle = { viewModel.toggleFilterList(filter) },
                                             onDelete = null,
                                             onClick = {
-                                                navigator.navigate(
-                                                    FilterDetailScreenDestination(filterId = filter.id)
-                                                )
+                                                onNavigateToFilterDetail(filter.id)
                                             }
                                         )
                                         if (index < securityFilters.lastIndex) {
@@ -339,9 +330,7 @@ fun FilterSetupScreen(
                                                 onToggle = { viewModel.toggleFilterList(filter) },
                                                 onDelete = { viewModel.deleteFilterList(filter) },
                                                 onClick = {
-                                                    navigator.navigate(
-                                                        FilterDetailScreenDestination(filterId = filter.id)
-                                                    )
+                                                    onNavigateToFilterDetail(filter.id)
                                                 }
                                             )
                                             if (index < customFilters.lastIndex) {
@@ -380,7 +369,7 @@ fun FilterSetupScreen(
                         item {
                             Spacer(modifier = Modifier.height(16.dp))
                             OutlinedButton(
-                                onClick = { navigator.navigate(CustomRulesScreenDestination()) },
+                                onClick = onNavigateToCustomRules,
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(12.dp)
                             ) {

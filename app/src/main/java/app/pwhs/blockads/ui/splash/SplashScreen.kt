@@ -1,12 +1,25 @@
 package app.pwhs.blockads.ui.splash
 
-import androidx.compose.animation.core.*
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -18,21 +31,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.pwhs.blockads.R
-import com.ramcosta.composedestinations.annotation.Destination
-import com.ramcosta.composedestinations.annotation.RootGraph
-import com.ramcosta.composedestinations.generated.NavGraphs
-import com.ramcosta.composedestinations.generated.destinations.HomeScreenDestination
-import com.ramcosta.composedestinations.generated.destinations.OnboardingScreenDestination
-import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import kotlinx.coroutines.delay
 import org.koin.compose.koinInject
 
-@Destination<RootGraph>(start = true)
 @Composable
 fun SplashScreen(
-    navigator: DestinationsNavigator,
     modifier: Modifier = Modifier,
-    viewModel: SplashViewModel = koinInject()
+    viewModel: SplashViewModel = koinInject(),
+    onNavigateToHome: () -> Unit = {},
+    onNavigateToOnboarding: () -> Unit = {},
 ) {
     var startAnimation by remember { mutableStateOf(false) }
 
@@ -51,16 +58,12 @@ fun SplashScreen(
             when (event) {
                 is SplashEvent.Home -> {
                     delay(500) // Allow animation to finish
-                    navigator.navigate(HomeScreenDestination) {
-                        popUpTo(NavGraphs.root) { inclusive = true }
-                    }
+                    onNavigateToHome()
                 }
 
                 is SplashEvent.Onboarding -> {
                     delay(500) // Allow animation to finish
-                    navigator.navigate(OnboardingScreenDestination) {
-                        popUpTo(NavGraphs.root) { inclusive = true }
-                    }
+                    onNavigateToOnboarding()
                 }
 
             }

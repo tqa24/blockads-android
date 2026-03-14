@@ -56,11 +56,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.core.content.ContextCompat
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.pwhs.blockads.R
 import app.pwhs.blockads.ui.onboarding.component.CompletionStep
 import app.pwhs.blockads.ui.onboarding.component.DnsServerStep
@@ -69,24 +71,16 @@ import app.pwhs.blockads.ui.onboarding.component.PermissionStep
 import app.pwhs.blockads.ui.onboarding.component.ProtectionLevelStep
 import app.pwhs.blockads.ui.onboarding.data.OnboardingPage
 import app.pwhs.blockads.ui.theme.AccentBlue
-import com.ramcosta.composedestinations.annotation.Destination
-import com.ramcosta.composedestinations.annotation.RootGraph
-import com.ramcosta.composedestinations.generated.NavGraphs
-import com.ramcosta.composedestinations.generated.destinations.HomeScreenDestination
-import com.ramcosta.composedestinations.navigation.DestinationsNavigator
+import app.pwhs.blockads.util.AppConstants.TOTAL_PAGES
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
-import androidx.core.net.toUri
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import app.pwhs.blockads.util.AppConstants.TOTAL_PAGES
 
-@Destination<RootGraph>
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun OnboardingScreen(
-    navigator: DestinationsNavigator,
     modifier: Modifier = Modifier,
-    viewModel: OnboardingViewModel = koinViewModel()
+    viewModel: OnboardingViewModel = koinViewModel(),
+    onNavigateToHome: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -137,9 +131,7 @@ fun OnboardingScreen(
     fun skipToHome() {
         scope.launch {
             viewModel.completeOnboarding()
-            navigator.navigate(HomeScreenDestination) {
-                popUpTo(NavGraphs.root) { inclusive = true }
-            }
+            onNavigateToHome()
         }
     }
 

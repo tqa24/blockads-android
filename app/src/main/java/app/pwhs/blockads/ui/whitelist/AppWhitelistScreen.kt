@@ -34,6 +34,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -48,26 +49,22 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.pwhs.blockads.R
 import app.pwhs.blockads.ui.theme.TextSecondary
 import app.pwhs.blockads.ui.whitelist.component.AppListItem
-import com.ramcosta.composedestinations.annotation.Destination
-import com.ramcosta.composedestinations.annotation.RootGraph
-import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 
-@Destination<RootGraph>
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppWhitelistScreen(
-    navigator: DestinationsNavigator,
     modifier: Modifier = Modifier,
-    viewModel: AppWhitelistViewModel = koinViewModel()
+    viewModel: AppWhitelistViewModel = koinViewModel(),
+    onNavigateBack: () -> Unit = { }
 ) {
     val whitelistedApps by viewModel.whitelistedApps.collectAsStateWithLifecycle()
     val installedApps by viewModel.installedApps.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     var searchQuery by remember { mutableStateOf("") }
     // 0 = All, 1 = Enabled, 2 = Disabled
-    var filterOption by remember { mutableStateOf(0) }
+    var filterOption by remember { mutableIntStateOf(0) }
 
     val userApps = remember(installedApps) {
         installedApps.filter { !it.isSystemApp }
@@ -102,7 +99,7 @@ fun AppWhitelistScreen(
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = { navigator.navigateUp() }) {
+                    IconButton(onClick = onNavigateBack) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back"
@@ -244,19 +241,20 @@ fun AppWhitelistScreen(
                         0 -> userApps
                         else -> systemApps
                     }
-                    val filteredApps = remember(searchQuery, appsForPage, whitelistedApps, filterOption) {
-                        appsForPage.filter { app ->
-                            val matchesSearch = searchQuery.isBlank() ||
-                                    app.label.contains(searchQuery, ignoreCase = true) ||
-                                    app.packageName.contains(searchQuery, ignoreCase = true)
-                            val matchesFilter = when (filterOption) {
-                                1 -> app.packageName in whitelistedApps
-                                2 -> app.packageName !in whitelistedApps
-                                else -> true
+                    val filteredApps =
+                        remember(searchQuery, appsForPage, whitelistedApps, filterOption) {
+                            appsForPage.filter { app ->
+                                val matchesSearch = searchQuery.isBlank() ||
+                                        app.label.contains(searchQuery, ignoreCase = true) ||
+                                        app.packageName.contains(searchQuery, ignoreCase = true)
+                                val matchesFilter = when (filterOption) {
+                                    1 -> app.packageName in whitelistedApps
+                                    2 -> app.packageName !in whitelistedApps
+                                    else -> true
+                                }
+                                matchesSearch && matchesFilter
                             }
-                            matchesSearch && matchesFilter
                         }
-                    }
 
                     if (filteredApps.isEmpty()) {
                         Box(

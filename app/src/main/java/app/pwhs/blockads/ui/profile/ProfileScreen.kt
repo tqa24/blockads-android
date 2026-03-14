@@ -32,6 +32,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -47,18 +48,14 @@ import app.pwhs.blockads.ui.profile.component.ProfileItem
 import app.pwhs.blockads.ui.profile.component.ScheduleItem
 import app.pwhs.blockads.ui.settings.component.SectionHeader
 import app.pwhs.blockads.util.profileDisplayName
-import com.ramcosta.composedestinations.annotation.Destination
-import com.ramcosta.composedestinations.annotation.RootGraph
-import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import org.koin.androidx.compose.koinViewModel
-import androidx.compose.runtime.remember
 
-@Destination<RootGraph>
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
-    navigator: DestinationsNavigator, modifier: Modifier = Modifier,
-    viewModel: ProfileViewModel = koinViewModel()
+    modifier: Modifier = Modifier,
+    viewModel: ProfileViewModel = koinViewModel(),
+    onNavigateBack: () -> Unit = { }
 ) {
     val profiles by viewModel.profiles.collectAsStateWithLifecycle()
     val activeProfile by viewModel.activeProfile.collectAsStateWithLifecycle()
@@ -75,7 +72,7 @@ fun ProfileScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.profile_title)) },
                 navigationIcon = {
-                    IconButton(onClick = { navigator.popBackStack() }) {
+                    IconButton(onClick = onNavigateBack) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(R.string.settings_cancel)

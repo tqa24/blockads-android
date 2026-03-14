@@ -61,21 +61,17 @@ import app.pwhs.blockads.ui.theme.DangerRed
 import app.pwhs.blockads.ui.theme.TextSecondary
 import app.pwhs.blockads.util.formatCount
 import app.pwhs.blockads.util.formatDate
-import com.ramcosta.composedestinations.annotation.Destination
-import com.ramcosta.composedestinations.annotation.RootGraph
-import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 
-@Destination<RootGraph>
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FilterDetailScreen(
     filterId: Long,
-    navigator: DestinationsNavigator,
     modifier: Modifier = Modifier,
-    viewModel: FilterDetailViewModel = koinViewModel { parametersOf(filterId) }
+    viewModel: FilterDetailViewModel = koinViewModel { parametersOf(filterId) },
+    onNavigateBack: () -> Unit = { }
 ) {
     val filter by viewModel.filter.collectAsStateWithLifecycle()
     val domainPreview by viewModel.domainPreview.collectAsStateWithLifecycle()
@@ -101,7 +97,7 @@ fun FilterDetailScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = { navigator.navigateUp() }) {
+                    IconButton(onClick = onNavigateBack) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back"
@@ -311,7 +307,7 @@ fun FilterDetailScreen(
                         Button(
                             onClick = {
                                 viewModel.deleteFilter()
-                                navigator.navigateUp()
+                                onNavigateBack()
                             },
                             modifier = Modifier.weight(1f),
                             shape = RoundedCornerShape(12.dp),

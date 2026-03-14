@@ -73,26 +73,20 @@ import app.pwhs.blockads.ui.settings.component.SectionHeader
 import app.pwhs.blockads.ui.settings.component.SettingsToggleItem
 import app.pwhs.blockads.ui.theme.DangerRed
 import app.pwhs.blockads.ui.theme.TextSecondary
-import com.ramcosta.composedestinations.annotation.Destination
-import com.ramcosta.composedestinations.annotation.RootGraph
-import com.ramcosta.composedestinations.generated.destinations.AboutScreenDestination
-import com.ramcosta.composedestinations.generated.destinations.AppManagementScreenDestination
-import com.ramcosta.composedestinations.generated.destinations.AppWhitelistScreenDestination
-import com.ramcosta.composedestinations.generated.destinations.AppearanceScreenDestination
-import com.ramcosta.composedestinations.generated.destinations.DnsProviderScreenDestination
-import com.ramcosta.composedestinations.generated.destinations.FilterSetupScreenDestination
-import com.ramcosta.composedestinations.generated.destinations.BlocklistDomainScreenDestination
-import com.ramcosta.composedestinations.generated.destinations.WhitelistDomainScreenDestination
-import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import org.koin.androidx.compose.koinViewModel
 
-@Destination<RootGraph>
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    navigator: DestinationsNavigator,
     modifier: Modifier = Modifier,
-    viewModel: SettingsViewModel = koinViewModel()
+    viewModel: SettingsViewModel = koinViewModel(),
+    onNavigateToAbout: () -> Unit = { },
+    onNavigateToAppearance: () -> Unit = { },
+    onNavigateToAppManagement: () -> Unit = { },
+    onNavigateToFilterSetup: () -> Unit = { },
+    onNavigateToWhitelistDomains: () -> Unit = { },
+    onNavigateToBlocklistDomains: () -> Unit = { },
+    onNavigateToWhitelistApps: () -> Unit = { }
 ) {
     val autoReconnect by viewModel.autoReconnect.collectAsStateWithLifecycle()
     val filterLists by viewModel.filterLists.collectAsStateWithLifecycle()
@@ -199,7 +193,6 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.height(12.dp))
 
             Card(
-                onClick = { navigator.navigate(DnsProviderScreenDestination) },
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 shape = RoundedCornerShape(16.dp)
             ) {
@@ -260,7 +253,7 @@ fun SettingsScreen(
                 description = stringResource(R.string.settings_category_interface_desc)
             )
             Card(
-                onClick = { navigator.navigate(AppearanceScreenDestination) },
+                onClick = onNavigateToAppearance,
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 shape = RoundedCornerShape(16.dp)
             ) {
@@ -305,7 +298,7 @@ fun SettingsScreen(
                 description = stringResource(R.string.settings_category_apps_desc)
             )
             Card(
-                onClick = { navigator.navigate(AppWhitelistScreenDestination) },
+                onClick = onNavigateToWhitelistApps,
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 shape = RoundedCornerShape(16.dp)
             ) {
@@ -343,7 +336,7 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.height(12.dp))
             // App Management
             Card(
-                onClick = { navigator.navigate(AppManagementScreenDestination) },
+                onClick = onNavigateToAppManagement,
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 shape = RoundedCornerShape(16.dp)
             ) {
@@ -390,15 +383,9 @@ fun SettingsScreen(
             // Firewall (Per-App Internet Control)
             FireWall(
                 modifier = Modifier.fillMaxWidth(),
-                onNavigateToFilterSetup = {
-                    navigator.navigate(FilterSetupScreenDestination)
-                },
-                onNavigateToWhitelistDomains = {
-                    navigator.navigate(WhitelistDomainScreenDestination)
-                },
-                onNavigateToBlocklistDomains = {
-                    navigator.navigate(BlocklistDomainScreenDestination)
-                },
+                onNavigateToFilterSetup = onNavigateToFilterSetup,
+                onNavigateToWhitelistDomains = onNavigateToWhitelistDomains,
+                onNavigateToBlocklistDomains = onNavigateToBlocklistDomains,
                 whitelistCount = whitelistDomains.size,
                 blocklistCount = blocklistDomainsCount,
                 filterLists = filterLists,
@@ -528,7 +515,7 @@ fun SettingsScreen(
                 description = stringResource(R.string.settings_category_info_desc)
             )
             Card(
-                onClick = { navigator.navigate(AboutScreenDestination) },
+                onClick = onNavigateToAbout,
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 shape = RoundedCornerShape(16.dp)
             ) {

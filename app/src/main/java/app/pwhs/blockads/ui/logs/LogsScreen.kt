@@ -69,18 +69,14 @@ import app.pwhs.blockads.ui.logs.data.TimeRange
 import app.pwhs.blockads.ui.theme.DangerRed
 import app.pwhs.blockads.ui.theme.TextSecondary
 import app.pwhs.blockads.ui.theme.WhitelistAmber
-import com.ramcosta.composedestinations.annotation.Destination
-import com.ramcosta.composedestinations.annotation.RootGraph
-import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import org.koin.androidx.compose.koinViewModel
 
-@Destination<RootGraph>
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LogScreen(
+fun LogsScreen(
     modifier: Modifier = Modifier,
-    navigator: DestinationsNavigator,
-    viewModel: LogViewModel = koinViewModel()
+    viewModel: LogViewModel = koinViewModel(),
+    onNavigateBack: () -> Unit = { }
 ) {
     val logs by viewModel.logs.collectAsStateWithLifecycle()
     val showBlockedOnly by viewModel.showBlockedOnly.collectAsStateWithLifecycle()
@@ -112,7 +108,7 @@ fun LogScreen(
         topBar = {
             TopAppBar(
                 navigationIcon = {
-                    IconButton(onClick = { navigator.navigateUp() }) {
+                    IconButton(onClick = onNavigateBack) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back"

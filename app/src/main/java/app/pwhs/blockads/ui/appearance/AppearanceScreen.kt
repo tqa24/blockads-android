@@ -57,22 +57,18 @@ import app.pwhs.blockads.ui.appearance.component.AccentColorCircle
 import app.pwhs.blockads.ui.settings.component.SectionHeader
 import app.pwhs.blockads.ui.theme.AccentBluePreset
 import app.pwhs.blockads.ui.theme.AccentGreen
+import app.pwhs.blockads.ui.theme.AccentGrey
 import app.pwhs.blockads.ui.theme.AccentOrange
 import app.pwhs.blockads.ui.theme.AccentPink
 import app.pwhs.blockads.ui.theme.AccentPurple
-import app.pwhs.blockads.ui.theme.AccentGrey
 import app.pwhs.blockads.ui.theme.AccentTeal
-import com.ramcosta.composedestinations.annotation.Destination
-import com.ramcosta.composedestinations.annotation.RootGraph
-import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import org.koin.androidx.compose.koinViewModel
 
-@Destination<RootGraph>
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppearanceScreen(
-    navigator: DestinationsNavigator,
     modifier: Modifier = Modifier,
+    onNavigateBack: () -> Unit = { },
     viewModel: AppearanceViewModel = koinViewModel()
 ) {
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
@@ -91,7 +87,7 @@ fun AppearanceScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = { navigator.navigateUp() }) {
+                    IconButton(onClick = onNavigateBack) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back"
@@ -124,9 +120,21 @@ fun AppearanceScreen(
             ) {
                 Column {
                     val themes = listOf(
-                        Triple(R.string.settings_theme_system, Icons.Default.SettingsBrightness, AppPreferences.THEME_SYSTEM),
-                        Triple(R.string.settings_theme_light, Icons.Default.LightMode, AppPreferences.THEME_LIGHT),
-                        Triple(R.string.settings_theme_dark, Icons.Default.DarkMode, AppPreferences.THEME_DARK),
+                        Triple(
+                            R.string.settings_theme_system,
+                            Icons.Default.SettingsBrightness,
+                            AppPreferences.THEME_SYSTEM
+                        ),
+                        Triple(
+                            R.string.settings_theme_light,
+                            Icons.Default.LightMode,
+                            AppPreferences.THEME_LIGHT
+                        ),
+                        Triple(
+                            R.string.settings_theme_dark,
+                            Icons.Default.DarkMode,
+                            AppPreferences.THEME_DARK
+                        ),
                     )
                     themes.forEachIndexed { index, (labelRes, icon, themeCode) ->
                         Row(
@@ -139,7 +147,7 @@ fun AppearanceScreen(
                             Icon(
                                 icon, contentDescription = null,
                                 tint = if (themeMode == themeCode) MaterialTheme.colorScheme.primary
-                                       else MaterialTheme.colorScheme.onSurfaceVariant,
+                                else MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(20.dp)
                             )
                             Spacer(modifier = Modifier.width(12.dp))
@@ -149,7 +157,7 @@ fun AppearanceScreen(
                                 style = MaterialTheme.typography.bodyLarge,
                                 fontWeight = if (themeMode == themeCode) FontWeight.SemiBold else FontWeight.Normal,
                                 color = if (themeMode == themeCode) MaterialTheme.colorScheme.primary
-                                        else MaterialTheme.colorScheme.onSurface
+                                else MaterialTheme.colorScheme.onSurface
                             )
                             if (themeMode == themeCode) {
                                 Icon(
@@ -249,7 +257,11 @@ fun AppearanceScreen(
                                     )
                                     .then(
                                         if (accentColor == AppPreferences.ACCENT_DYNAMIC) {
-                                            Modifier.border(3.dp, MaterialTheme.colorScheme.primary, CircleShape)
+                                            Modifier.border(
+                                                3.dp,
+                                                MaterialTheme.colorScheme.primary,
+                                                CircleShape
+                                            )
                                         } else Modifier
                                     ),
                                 contentAlignment = Alignment.Center
@@ -306,17 +318,61 @@ fun AppearanceScreen(
             ) {
                 Column {
                     val languages = listOf(
-                        Triple(R.string.settings_lang_system, Icons.Default.SettingsBrightness, AppPreferences.LANGUAGE_SYSTEM),
-                        Triple(R.string.settings_lang_en, Icons.Default.Language, AppPreferences.LANGUAGE_EN),
-                        Triple(R.string.settings_lang_vi, Icons.Default.Language, AppPreferences.LANGUAGE_VI),
-                        Triple(R.string.settings_lang_ja, Icons.Default.Language, AppPreferences.LANGUAGE_JA),
-                        Triple(R.string.settings_lang_ko, Icons.Default.Language, AppPreferences.LANGUAGE_KO),
-                        Triple(R.string.settings_lang_zh, Icons.Default.Language, AppPreferences.LANGUAGE_ZH),
-                        Triple(R.string.settings_lang_th, Icons.Default.Language, AppPreferences.LANGUAGE_TH),
-                        Triple(R.string.settings_lang_es, Icons.Default.Language, AppPreferences.LANGUAGE_ES),
-                        Triple(R.string.settings_lang_ru, Icons.Default.Language, AppPreferences.LANGUAGE_RU),
-                        Triple(R.string.settings_lang_it, Icons.Default.Language, AppPreferences.LANGUAGE_IT),
-                        Triple(R.string.settings_lang_ar, Icons.Default.Language, AppPreferences.LANGUAGE_AR),
+                        Triple(
+                            R.string.settings_lang_system,
+                            Icons.Default.SettingsBrightness,
+                            AppPreferences.LANGUAGE_SYSTEM
+                        ),
+                        Triple(
+                            R.string.settings_lang_en,
+                            Icons.Default.Language,
+                            AppPreferences.LANGUAGE_EN
+                        ),
+                        Triple(
+                            R.string.settings_lang_vi,
+                            Icons.Default.Language,
+                            AppPreferences.LANGUAGE_VI
+                        ),
+                        Triple(
+                            R.string.settings_lang_ja,
+                            Icons.Default.Language,
+                            AppPreferences.LANGUAGE_JA
+                        ),
+                        Triple(
+                            R.string.settings_lang_ko,
+                            Icons.Default.Language,
+                            AppPreferences.LANGUAGE_KO
+                        ),
+                        Triple(
+                            R.string.settings_lang_zh,
+                            Icons.Default.Language,
+                            AppPreferences.LANGUAGE_ZH
+                        ),
+                        Triple(
+                            R.string.settings_lang_th,
+                            Icons.Default.Language,
+                            AppPreferences.LANGUAGE_TH
+                        ),
+                        Triple(
+                            R.string.settings_lang_es,
+                            Icons.Default.Language,
+                            AppPreferences.LANGUAGE_ES
+                        ),
+                        Triple(
+                            R.string.settings_lang_ru,
+                            Icons.Default.Language,
+                            AppPreferences.LANGUAGE_RU
+                        ),
+                        Triple(
+                            R.string.settings_lang_it,
+                            Icons.Default.Language,
+                            AppPreferences.LANGUAGE_IT
+                        ),
+                        Triple(
+                            R.string.settings_lang_ar,
+                            Icons.Default.Language,
+                            AppPreferences.LANGUAGE_AR
+                        ),
                     )
                     languages.forEachIndexed { index, (labelRes, icon, langCode) ->
                         Row(
@@ -329,7 +385,7 @@ fun AppearanceScreen(
                             Icon(
                                 icon, contentDescription = null,
                                 tint = if (appLanguage == langCode) MaterialTheme.colorScheme.primary
-                                       else MaterialTheme.colorScheme.onSurfaceVariant,
+                                else MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(20.dp)
                             )
                             Spacer(modifier = Modifier.width(12.dp))
@@ -339,7 +395,7 @@ fun AppearanceScreen(
                                 style = MaterialTheme.typography.bodyLarge,
                                 fontWeight = if (appLanguage == langCode) FontWeight.SemiBold else FontWeight.Normal,
                                 color = if (appLanguage == langCode) MaterialTheme.colorScheme.primary
-                                        else MaterialTheme.colorScheme.onSurface
+                                else MaterialTheme.colorScheme.onSurface
                             )
                             if (appLanguage == langCode) {
                                 Icon(

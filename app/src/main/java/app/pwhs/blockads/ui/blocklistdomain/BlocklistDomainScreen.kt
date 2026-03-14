@@ -64,20 +64,16 @@ import app.pwhs.blockads.ui.event.UiEventEffect
 import app.pwhs.blockads.ui.settings.component.AddDomainDialog
 import app.pwhs.blockads.ui.theme.DangerRed
 import app.pwhs.blockads.ui.theme.TextSecondary
-import com.ramcosta.composedestinations.annotation.Destination
-import com.ramcosta.composedestinations.annotation.RootGraph
-import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import org.koin.androidx.compose.koinViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-@Destination<RootGraph>
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BlocklistDomainScreen(
-    navigator: DestinationsNavigator,
     modifier: Modifier = Modifier,
+    onNavigateBack: () -> Unit = { },
     viewModel: BlocklistDomainViewModel = koinViewModel()
 ) {
     val blocklistDomains by viewModel.blocklistDomains.collectAsStateWithLifecycle()
@@ -109,7 +105,7 @@ fun BlocklistDomainScreen(
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = { navigator.navigateUp() }) {
+                    IconButton(onClick = onNavigateBack) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back"

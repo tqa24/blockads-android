@@ -85,23 +85,18 @@ import app.pwhs.blockads.util.formatUptimeShort
 import app.pwhs.blockads.util.profileDisplayName
 import app.pwhs.blockads.util.profileIcon
 import com.google.accompanist.drawablepainter.rememberDrawablePainter
-import com.ramcosta.composedestinations.annotation.Destination
-import com.ramcosta.composedestinations.annotation.RootGraph
-import com.ramcosta.composedestinations.generated.destinations.LogScreenDestination
-import com.ramcosta.composedestinations.generated.destinations.ProfileScreenDestination
-import com.ramcosta.composedestinations.generated.destinations.StatisticsScreenDestination
-import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import org.koin.androidx.compose.koinViewModel
 import java.util.Locale
 
-@Destination<RootGraph>
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
-    navigator: DestinationsNavigator,
     onRequestVpnPermission: () -> Unit,
     modifier: Modifier = Modifier,
-    viewModel: HomeViewModel = koinViewModel()
+    viewModel: HomeViewModel = koinViewModel(),
+    onNavigateToStatisticsScreen: () -> Unit = {},
+    onNavigateToLogScreen: () -> Unit = {},
+    onNavigateToProfileScreen: () -> Unit = {},
 ) {
     val vpnEnabled by viewModel.vpnEnabled.collectAsStateWithLifecycle()
     val vpnConnecting by viewModel.vpnConnecting.collectAsStateWithLifecycle()
@@ -184,14 +179,14 @@ fun HomeScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { navigator.navigate(StatisticsScreenDestination) }) {
+                    IconButton(onClick = onNavigateToStatisticsScreen) {
                         Icon(
                             painter = painterResource(R.drawable.ic_chart_bar),
                             contentDescription = stringResource(R.string.nav_statistics),
                             tint = MaterialTheme.colorScheme.primary
                         )
                     }
-                    IconButton(onClick = { navigator.navigate(LogScreenDestination) }) {
+                    IconButton(onClick = onNavigateToLogScreen) {
                         Icon(
                             painter = painterResource(R.drawable.ic_history),
                             contentDescription = stringResource(R.string.nav_logs),
@@ -248,9 +243,7 @@ fun HomeScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
             Button(
-                onClick = {
-                    navigator.navigate(ProfileScreenDestination())
-                },
+                onClick = onNavigateToProfileScreen,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
                 ),

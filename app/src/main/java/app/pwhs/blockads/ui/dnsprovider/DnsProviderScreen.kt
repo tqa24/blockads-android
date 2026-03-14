@@ -32,11 +32,8 @@ import app.pwhs.blockads.ui.dnsprovider.component.DnsProviderCard
 import app.pwhs.blockads.ui.dnsprovider.component.FallbackDnsCard
 import app.pwhs.blockads.ui.dnsprovider.component.FallbackDnsDialog
 import app.pwhs.blockads.ui.event.UiEventEffect
-import com.ramcosta.composedestinations.annotation.Destination
-import com.ramcosta.composedestinations.annotation.RootGraph
 import org.koin.androidx.compose.koinViewModel
 
-@Destination<RootGraph>
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DnsProviderScreen(

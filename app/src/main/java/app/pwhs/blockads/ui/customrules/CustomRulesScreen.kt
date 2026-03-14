@@ -33,7 +33,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -50,17 +49,13 @@ import app.pwhs.blockads.ui.customrules.component.CustomRuleItem
 import app.pwhs.blockads.ui.customrules.component.EmptyRulesState
 import app.pwhs.blockads.ui.customrules.component.ImportRulesDialog
 import app.pwhs.blockads.ui.customrules.component.InfoDialog
-import com.ramcosta.composedestinations.annotation.Destination
-import com.ramcosta.composedestinations.annotation.RootGraph
-import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import org.koin.androidx.compose.koinViewModel
 
-@Destination<RootGraph>
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CustomRulesScreen(
-    navigator: DestinationsNavigator,
-    viewModel: CustomRulesViewModel = koinViewModel()
+    viewModel: CustomRulesViewModel = koinViewModel(),
+    onNavigateBack: () -> Unit = { }
 ) {
     val rules by viewModel.rules.collectAsStateWithLifecycle()
     val error by viewModel.error.collectAsStateWithLifecycle()
@@ -78,7 +73,7 @@ fun CustomRulesScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.custom_rules)) },
                 navigationIcon = {
-                    IconButton(onClick = { navigator.navigateUp() }) {
+                    IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },

@@ -53,12 +53,9 @@ import app.pwhs.blockads.R
 import app.pwhs.blockads.ui.firewall.component.FirewallAppItem
 import app.pwhs.blockads.ui.firewall.component.FirewallRuleDialog
 import app.pwhs.blockads.ui.theme.TextSecondary
-import com.ramcosta.composedestinations.annotation.Destination
-import com.ramcosta.composedestinations.annotation.RootGraph
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 
-@Destination<RootGraph>
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FirewallScreen(

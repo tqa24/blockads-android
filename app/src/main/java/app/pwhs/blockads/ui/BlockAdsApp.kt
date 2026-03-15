@@ -48,6 +48,7 @@ import app.pwhs.blockads.ui.statistics.StatisticsScreen
 import app.pwhs.blockads.ui.whitelist.AppWhitelistScreen
 import app.pwhs.blockads.ui.whitelistdomain.WhitelistDomainScreen
 import app.pwhs.blockads.ui.wireguard.WireGuardImportScreen
+import app.pwhs.blockads.ui.httpsfiltering.HttpsFilteringScreen
 import kotlinx.serialization.Serializable
 import org.koin.compose.koinInject
 
@@ -150,6 +151,9 @@ data object CustomRuleKey : NavKey
 
 @Serializable
 data object WireGuardImportKey : NavKey
+
+@Serializable
+data object HttpsFilteringKey : NavKey
 
 enum class BottomBarScreen(
     @StringRes val labelRes: Int,
@@ -335,6 +339,10 @@ fun HomeApp(onRequestVpnPermission: () -> Unit = {}) {
                         onNavigateToWireGuardImport = {
                             showBottomBar = false
                             settingsStack.add(WireGuardImportKey)
+                        },
+                        onNavigateToHttpsFiltering = {
+                            showBottomBar = false
+                            settingsStack.add(HttpsFilteringKey)
                         }
                     )
                 }
@@ -429,6 +437,14 @@ fun HomeApp(onRequestVpnPermission: () -> Unit = {}) {
                 }
                 entry<WireGuardImportKey> {
                     WireGuardImportScreen(
+                        onNavigateBack = {
+                            showBottomBar = true
+                            settingsStack.removeLastOrNull()
+                        }
+                    )
+                }
+                entry<HttpsFilteringKey> {
+                    HttpsFilteringScreen(
                         onNavigateBack = {
                             showBottomBar = true
                             settingsStack.removeLastOrNull()

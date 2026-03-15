@@ -608,4 +608,21 @@
     <string name="wireguard_clear">Clear WireGuard</string>
     <string name="wireguard_active_label">WireGuard Active — Restart VPN to apply</string>
 
+    <!-- HTTPS Filtering -->
+    <string name="https_filtering_title">HTTPS Filtering</string>
+    <string name="https_filtering_toggle_label">HTTPS Popup Blocker</string>
+    <string name="https_filtering_status_active">Active — Filtering popups</string>
+    <string name="https_filtering_status_inactive">Inactive</string>
+    <string name="https_filtering_explain_title">How does this work?</string>
+    <string name="https_filtering_explain_body">HTTPS Filtering intercepts web traffic from your selected browsers and injects a script to block annoying popups, pop-unders, and redirect ads.\n\nTo do this, a local Root CA certificate must be installed on your device. This certificate is generated locally and never leaves your phone. Banking apps, Google, and other sensitive services are never intercepted.</string>
+    <string name="https_filtering_ca_title">Root CA Certificate</string>
+    <string name="https_filtering_ca_desc">To block popups on HTTPS sites, install the BlockAds Root CA certificate on your device. Follow the steps below.</string>
+    <string name="https_filtering_export_ca">Step 1: Save Certificate to Downloads</string>
+    <string name="https_filtering_cert_saved">Certificate saved to Downloads!</string>
+    <string name="https_filtering_install_steps">Step 2: Install the certificate manually:\n\n1. Go to Settings → Security → Encryption &amp; credentials\n2. Tap \"Install a certificate\" → \"CA certificate\"\n3. Select \"BlockAds-RootCA.crt\" from Downloads\n4. Confirm the installation</string>
+    <string name="https_filtering_open_settings">Open Security Settings</string>
+    <string name="https_filtering_browser_section">Browser Selection</string>
+    <string name="https_filtering_browser_desc">Select browsers to block popups in. Only selected apps are filtered.</string>
+    <string name="https_filtering_settings_desc">Block popups &amp; redirects in browsers</string>
+
 </resources>

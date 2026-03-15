@@ -87,6 +87,9 @@ type Engine struct {
 	adBloom  *BloomFilter
 	secBloom *BloomFilter
 
+	// Native Go blocklist for mobile ad SDKs + DoH providers
+	nativeBlocklist *nativeBlocklist
+
 	mu      sync.Mutex
 	running bool
 	tunFile *os.File
@@ -94,6 +97,9 @@ type Engine struct {
 	// Pipeline components
 	router      *Router
 	interceptor *DnsInterceptor
+
+	// MITM Proxy
+	mitmProxy *MitmProxy
 
 	// Stats
 	totalQueries   atomic.Int64
@@ -110,9 +116,10 @@ type Stats struct {
 func NewEngine() *Engine {
 	router := NewRouter()
 	e := &Engine{
-		safeSearch:   NewSafeSearch(),
-		responseType: ResponseCustomIP,
-		router:       router,
+		safeSearch:     NewSafeSearch(),
+		responseType:   ResponseCustomIP,
+		router:         router,
+		nativeBlocklist: newNativeBlocklist(),
 	}
 	e.interceptor = NewDnsInterceptor(e, router)
 	return e
@@ -412,6 +419,185 @@ func (e *Engine) GetStats() string {
 	return string(data)
 }
 
+// ── MITM Proxy API ───────────────────────────────────────────────────────────
+// gomobile-compatible methods for controlling the HTTPS MITM popup blocker.
+
+// StartMitmProxy starts the local HTTPS MITM proxy on the given address
+// (e.g., "127.0.0.1:8080"). Returns the PEM-encoded Root CA certificate
+// that the user must install on their Android device.
+//
+// Returns empty string on error (check logs).
+func (e *Engine) StartMitmProxy(addr string) string {
+	e.mu.Lock()
+	if e.mitmProxy != nil {
+		e.mu.Unlock()
+		logf("MITM Proxy already running")
+		return e.mitmProxy.GetCACertPEM()
+	}
+
+	proxy, err := NewMitmProxy()
+	if err != nil {
+		e.mu.Unlock()
+		logf("Failed to create MITM proxy: %v", err)
+		return ""
+	}
+	// ── Wire ad-block engine into proxy for Gate 1 blocking ──
+	proxy.SetAdBlockChecker(e)
+	e.mitmProxy = proxy
+	e.mu.Unlock()
+
+	caPEM := proxy.GetCACertPEM()
+	logf("MITM Proxy: CA cert generated (%d bytes)", len(caPEM))
+
+	// Start in background goroutine (Start() blocks)
+	go func() {
+		if err := proxy.Start(addr); err != nil {
+			logf("MITM Proxy error: %v", err)
+		}
+	}()
+
+	return caPEM
+}
+
+// StopMitmProxy stops the MITM proxy if it is running.
+func (e *Engine) StopMitmProxy() {
+	e.mu.Lock()
+	proxy := e.mitmProxy
+	e.mitmProxy = nil
+	e.mu.Unlock()
+
+	if proxy != nil {
+		proxy.Stop()
+	}
+}
+
+// GetMitmCACert returns the PEM-encoded Root CA certificate.
+// Returns empty string if the MITM proxy has not been started.
+func (e *Engine) GetMitmCACert() string {
+	e.mu.Lock()
+	proxy := e.mitmProxy
+	e.mu.Unlock()
+
+	if proxy == nil {
+		return ""
+	}
+	return proxy.GetCACertPEM()
+}
+
+// SetMitmAllowedUIDs sets the list of Android app UIDs that are allowed
+// for MITM interception (typically browser UIDs).
+//
+// uidsCsv: comma-separated UIDs, e.g., "10145,10200,10201"
+// gomobile doesn't support []int, so we use a CSV string.
+//
+// Kotlin usage:
+//
+//	val browserUids = listOf(chromeUid, firefoxUid, braveUid)
+//	engine.setMitmAllowedUIDs(browserUids.joinToString(","))
+func (e *Engine) SetMitmAllowedUIDs(uidsCsv string) {
+	e.mu.Lock()
+	proxy := e.mitmProxy
+	e.mu.Unlock()
+
+	if proxy == nil {
+		logf("MITM: SetAllowedUIDs called but proxy not running")
+		return
+	}
+
+	var uids []int
+	for _, s := range strings.Split(uidsCsv, ",") {
+		s = strings.TrimSpace(s)
+		if s == "" {
+			continue
+		}
+		uid := 0
+		for _, c := range s {
+			if c >= '0' && c <= '9' {
+				uid = uid*10 + int(c-'0')
+			}
+		}
+		if uid > 0 {
+			uids = append(uids, uid)
+		}
+	}
+
+	proxy.GetFilter().SetAllowedUIDs(uids)
+}
+
+// SetCosmeticCSS sets the minified CSS string to inject into HTML responses
+// for cosmetic ad hiding (e.g., EasyList `##.ad-banner` rules).
+//
+// Kotlin usage:
+//
+//	val css = CosmeticRuleParser.parseToCss(lines)
+//	engine.setCosmeticCSS(css)
+func (e *Engine) SetCosmeticCSS(css string) {
+	SetCosmeticCSS(css)
+}
+
+// ── AdBlockChecker implementation ────────────────────────────────────────────
+// IsDomainBlocked satisfies the AdBlockChecker interface used by the MITM
+// proxy.  It replicates the exact same blocking pipeline used for DNS queries:
+//   CustomRule(allow override) → SecurityTrie → AdTrie → Kotlin DomainChecker.
+func (e *Engine) IsDomainBlocked(host string) bool {
+	host = strings.ToLower(strings.TrimSpace(host))
+	if host == "" {
+		return false
+	}
+
+	// ── Custom rule allow/block override ──
+	if e.domainChecker != nil {
+		override := e.domainChecker.HasCustomRule(host)
+		if override == 0 {
+			return false // explicitly allowed
+		}
+		if override == 1 {
+			return true // explicitly blocked
+		}
+	}
+
+	// ── Security trie (Bloom pre-filter → Mmap Trie) ──
+	e.mu.Lock()
+	secBloom := e.secBloom
+	secTrie := e.secTrie
+	adBloom := e.adBloom
+	adTrie := e.adTrie
+	e.mu.Unlock()
+
+	if secTrie != nil {
+		if secBloom == nil || secBloom.MightContainDomainOrParent(host) {
+			if secTrie.ContainsOrParent(host) {
+				return true
+			}
+		}
+	}
+
+	// ── Ad trie (Bloom pre-filter → Mmap Trie) ──
+	if adTrie != nil {
+		if adBloom == nil || adBloom.MightContainDomainOrParent(host) {
+			if adTrie.ContainsOrParent(host) {
+				return true
+			}
+		}
+	}
+
+	// ── Kotlin DomainChecker fallback ──
+	if e.domainChecker != nil {
+		if e.domainChecker.IsBlocked(host) {
+			return true
+		}
+	}
+
+	// ── Native Go blocklist (mobile ad SDKs + DoH) ──
+	if e.nativeBlocklist != nil {
+		if blocked, _ := e.nativeBlocklist.isBlocked(host); blocked {
+			return true
+		}
+	}
+
+	return false
+}
+
 // handleDNSQuery processes a single DNS query.
 func (e *Engine) handleDNSQuery(queryInfo *DNSQueryInfo) {
 	startTime := time.Now()
@@ -497,6 +683,16 @@ func (e *Engine) handleDNSQuery(queryInfo *DNSQueryInfo) {
 				e.handleBlockedDomain(queryInfo, "filter_list", appName, startTime)
 				return
 			}
+		}
+	}
+
+	// Native Go blocklist — mobile ad SDKs + DoH providers
+	// Catches Unity Ads, AdMob, AppLovin, Vungle, ironSource, etc.
+	// that web-focused filter lists (EasyList) miss.
+	if e.nativeBlocklist != nil {
+		if blocked, reason := e.nativeBlocklist.isBlocked(domain); blocked {
+			e.handleBlockedDomain(queryInfo, reason, appName, startTime)
+			return
 		}
 	}
 

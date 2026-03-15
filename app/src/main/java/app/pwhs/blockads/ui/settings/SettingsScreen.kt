@@ -88,7 +88,8 @@ fun SettingsScreen(
     onNavigateToWhitelistDomains: () -> Unit = { },
     onNavigateToBlocklistDomains: () -> Unit = { },
     onNavigateToWhitelistApps: () -> Unit = { },
-    onNavigateToWireGuardImport: () -> Unit = { }
+    onNavigateToWireGuardImport: () -> Unit = { },
+    onNavigateToHttpsFiltering: () -> Unit = { }
 ) {
     val autoReconnect by viewModel.autoReconnect.collectAsStateWithLifecycle()
     val filterLists by viewModel.filterLists.collectAsStateWithLifecycle()
@@ -535,6 +536,46 @@ fun SettingsScreen(
                         )
                         Text(
                             stringResource(R.string.wireguard_empty_desc),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextSecondary
+                        )
+                    }
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowForwardIos,
+                        contentDescription = null,
+                        tint = TextSecondary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // HTTPS Filtering
+            Card(
+                onClick = onNavigateToHttpsFiltering,
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.Shield, contentDescription = null,
+                        tint = MaterialTheme.colorScheme.secondary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            stringResource(R.string.https_filtering_title),
+                            style = MaterialTheme.typography.titleSmall
+                        )
+                        Text(
+                            stringResource(R.string.https_filtering_settings_desc),
                             style = MaterialTheme.typography.bodySmall,
                             color = TextSecondary
                         )

@@ -241,6 +241,11 @@ class FilterListRepository(
         return if (file.exists()) file.absolutePath else null
     }
 
+    fun getCosmeticCssPath(): String? {
+        val file = File(context.filesDir, "$CACHE_DIR/cosmetic_rules.css")
+        return if (file.exists() && file.length() > 0) file.absolutePath else null
+    }
+
     /**
      * Check if a domain or any of its parent domains matches a condition.
      *
@@ -450,6 +455,7 @@ class FilterListRepository(
                     File(trieDir, "security_domains.trie").delete()
                     File(trieDir, "ad_domains.bloom").delete()
                     File(trieDir, "security_domains.bloom").delete()
+                    File(context.filesDir, "$CACHE_DIR/cosmetic_rules.css").delete()
                     File(trieDir, "trie_fingerprint.txt").delete()
                     _domainCountFlow.value = 0
                     return@withContext Result.success(0)
@@ -486,6 +492,14 @@ class FilterListRepository(
                     val totalCount = (adTrie?.size ?: 0) + (securityTrie?.size ?: 0)
                     _domainCountFlow.value = totalCount
                     Timber.d("Trie cache HIT — loaded $totalCount domains via mmap in ${elapsed}ms")
+
+                    // Ensure cosmetic rules are generated even on a cache hit if the file is missing/empty
+                    val cssFile = File(context.filesDir, "$CACHE_DIR/cosmetic_rules.css")
+                    if (!cssFile.exists() || cssFile.length() == 0L) {
+                        Timber.d("Trie cache HIT, but cosmetic CSS is missing or 0 bytes. Recompiling...")
+                        compileCosmeticRules(enabledLists)
+                    }
+
                     return@withContext Result.success(totalCount)
                 }
 
@@ -534,6 +548,9 @@ class FilterListRepository(
                     )
                     val totalCount = (adTrie?.size ?: 0) + (securityTrie?.size ?: 0)
                     _domainCountFlow.value = totalCount
+
+                    // Cosmetic rules must be totally recompiled if any lists were added
+                    compileCosmeticRules(enabledLists)
 
                     return@withContext Result.success(totalCount)
                 }
@@ -621,6 +638,10 @@ class FilterListRepository(
                     startTime,
                     "FULL REBUILD"
                 )
+
+                // ── Extract and store cosmetic rules in background ──
+                compileCosmeticRules(enabledLists)
+
                 val finalCount = adCount + secCount
                 _domainCountFlow.value = finalCount
                 Result.success(finalCount)
@@ -628,6 +649,99 @@ class FilterListRepository(
                 Timber.d("Failed to load filters: $e")
                 Result.failure(e)
             }
+        }
+    }
+
+    /**
+     * Extracts cosmetic rules from all enabled filters and saves them to a single CSS file.
+     * Overwrites the previous css file if it existed.
+     */
+    private suspend fun compileCosmeticRules(enabledLists: List<FilterList>) = withContext(Dispatchers.IO) {
+        try {
+            val validLists = enabledLists.filter { it.category != FilterList.CATEGORY_SECURITY }
+            if (validLists.isEmpty()) return@withContext
+
+            val selectors = mutableListOf<String>()
+
+            // Pass 1: Extract generic rules from each file
+            Timber.d("Cosmetic: Scanning ${validLists.size} lists for rules")
+            for (filter in validLists) {
+                val cacheFile = getCacheFile(filter)
+                if (!cacheFile.exists() || cacheFile.length() == 0L) {
+                    Timber.d("Cosmetic: Skipping ${filter.name} (no cache file)")
+                    continue
+                }
+
+                Timber.d("Cosmetic: Parsing ${filter.name}...")
+                var linesProcessed = 0
+                var hashHashFound = 0
+                var selectorsAdded = 0
+
+                cacheFile.bufferedReader().use { reader ->
+                    try {
+                        // Extract RAW selectors first before CSS generation
+                        reader.lineSequence()
+                            .forEach { line ->
+                                linesProcessed++
+                                val trimmed = line.trim()
+                                // Skip obvious comments: "! " or "# " (but allow "###" which is a cosmetic ID selector)
+                                if ((trimmed.startsWith("! ") || trimmed.startsWith("# ")) && !trimmed.contains("##")) {
+                                    return@forEach
+                                }
+
+                                if (trimmed.contains("##") &&
+                                        !trimmed.contains("#@#") &&
+                                        !trimmed.contains("##+js") &&
+                                        !trimmed.contains("##^")) {
+                                    
+                                    hashHashFound++
+                                    
+                                    val idx = trimmed.indexOf("##")
+                                    if (idx >= 0) {
+                                        val prefix = trimmed.substring(0, idx)
+                                        val selector = trimmed.substring(idx + 2).trim()
+
+                                        if (prefix.isEmpty() && selector.isNotEmpty() && !selector.startsWith('+') && !selector.startsWith('^') && !selector.contains(" ")) {
+                                             // Must contain at least one letter or digit to avoid injecting comment separators like `############`
+                                             if (selector.any { it.isLetterOrDigit() }) {
+                                                 // Skip large injection payloads or attribute selectors that cause lag
+                                                 if (!selector.contains("url(") && !selector.contains("expression(")) {
+                                                      selectors.add(selector)
+                                                      selectorsAdded++
+                                                 }
+                                             }
+                                        }
+                                    }
+                                }
+                            }
+                    } catch (e: Exception) {
+                        Timber.e(e, "Cosmetic read error for ${filter.name}")
+                    }
+                }
+                Timber.d("Cosmetic: ${filter.name} -> $linesProcessed lines, $hashHashFound '##' matches, $selectorsAdded added")
+            }
+
+            if (selectors.isEmpty()) {
+                Timber.d("Cosmetic: No rules found after scanning all files")
+                return@withContext
+            }
+
+            // De-duplicate and take top 2000
+            val uniqueSelectors = selectors.distinct().take(2000)
+            Timber.d("Merged ${uniqueSelectors.size} cosmetic rules across ${validLists.size} lists")
+
+            val sb = StringBuilder()
+            uniqueSelectors.chunked(50).forEach { batch ->
+                sb.append(batch.joinToString(","))
+                sb.append("{display:none!important}")
+            }
+
+            val cssFile = File(context.filesDir, "$CACHE_DIR/cosmetic_rules.css")
+            cssFile.writeText(sb.toString())
+            Timber.d("Wrote cosmetic CSS to ${cssFile.name} (${sb.length} bytes)")
+
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to compile cosmetic rules")
         }
     }
 

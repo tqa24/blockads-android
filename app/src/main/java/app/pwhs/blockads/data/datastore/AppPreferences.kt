@@ -49,6 +49,8 @@ class AppPreferences(private val context: Context) {
         private val KEY_SHOW_BOTTOM_NAV_LABELS = booleanPreferencesKey("show_bottom_nav_labels")
         private val KEY_ROUTING_MODE = stringPreferencesKey("routing_mode")
         private val KEY_WG_CONFIG_JSON = stringPreferencesKey("wg_config_json")
+        private val KEY_HTTPS_FILTERING_ENABLED = booleanPreferencesKey("https_filtering_enabled")
+        private val KEY_SELECTED_BROWSERS = stringSetPreferencesKey("selected_browsers")
 
         const val ROUTING_MODE_DIRECT = "direct"
         const val ROUTING_MODE_WIREGUARD = "wireguard"
@@ -431,5 +433,34 @@ class AppPreferences(private val context: Context) {
 
     suspend fun getWgConfigJsonSnapshot(): String? {
         return wgConfigJson.first()
+    }
+
+    // ── HTTPS Filtering ──────────────────────────────────────────────────
+
+    suspend fun setHttpsFilteringEnabled(enabled: Boolean) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_HTTPS_FILTERING_ENABLED] = enabled
+        }
+    }
+
+    suspend fun getHttpsFilteringEnabledSnapshot(): Boolean {
+        return context.dataStore.data.first()[KEY_HTTPS_FILTERING_ENABLED] ?: false
+    }
+
+    suspend fun setSelectedBrowsers(packages: Set<String>) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_SELECTED_BROWSERS] = packages
+        }
+    }
+
+    fun getSelectedBrowsersSnapshot(): Set<String> {
+        // Read synchronously for init — non-suspend for simplicity
+        return try {
+            kotlinx.coroutines.runBlocking {
+                context.dataStore.data.first()[KEY_SELECTED_BROWSERS] ?: emptySet()
+            }
+        } catch (_: Exception) {
+            emptySet()
+        }
     }
 }

@@ -186,6 +186,7 @@ class GoTunnelAdapter(
 
         // Give Go the paths to the Mmap logs so it can read them natively for max speed
         updateTries()
+        updateCosmeticRules()
 
         val fd = vpnInterface.fd
         Timber.d("Starting Go tunnel engine with fd=$fd, wg=${wgConfigJson.isNotEmpty()}")
@@ -224,6 +225,30 @@ class GoTunnelAdapter(
             filterRepo.getAdBloomPath() ?: "",
             filterRepo.getSecurityBloomPath() ?: ""
         )
+    }
+
+    /**
+     * Load the latest cosmetic rules from the cache and send them to the Go engine.
+     */
+    fun updateCosmeticRules() {
+        try {
+            val cssPath = filterRepo.getCosmeticCssPath()
+            if (cssPath != null) {
+                val file = java.io.File(cssPath)
+                if (file.exists() && file.length() > 0) {
+                    val cssSnippet = file.readText()
+                    engine.setCosmeticCSS(cssSnippet)
+                    Timber.d("Sent ${cssSnippet.length} bytes of cosmetic CSS to Go engine")
+                } else {
+                    engine.setCosmeticCSS("")
+                }
+            } else {
+                engine.setCosmeticCSS("")
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to load cosmetic CSS for engine")
+            engine.setCosmeticCSS("")
+        }
     }
 
     /**

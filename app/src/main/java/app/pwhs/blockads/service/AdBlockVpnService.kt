@@ -302,6 +302,9 @@ class AdBlockVpnService : VpnService() {
                     firewallManager = null
                 }
 
+                // Load HTTPS Filtering setting
+                val httpsFilteringEnabled = appPrefs.getHttpsFilteringEnabledSnapshot()
+
                 // Periodically refresh firewall rules and enabled state while the VPN coroutine is running.
                 launch {
                     var lastEnabled = firewallEnabled
@@ -353,7 +356,7 @@ class AdBlockVpnService : VpnService() {
 
                 var vpnEstablished = false
                 while (!vpnEstablished && retryManager.shouldRetry()) {
-                    vpnEstablished = establishVpn(whitelistedApps)
+                    vpnEstablished = establishVpn(whitelistedApps, httpsFilteringEnabled)
 
                     if (!vpnEstablished && retryManager.shouldRetry()) {
                         Timber
@@ -447,7 +450,7 @@ class AdBlockVpnService : VpnService() {
         }
     }
 
-    private fun establishVpn(whitelistedApps: Set<String>): Boolean {
+    private fun establishVpn(whitelistedApps: Set<String>, httpsFilteringEnabled: Boolean): Boolean {
         // First check if the system still grants us the VPN permission.
         if (VpnService.prepare(this) != null) {
             Timber.e("VPN is not prepared or permission was revoked.")
@@ -517,6 +520,17 @@ class AdBlockVpnService : VpnService() {
                     .addDnsServer("fd00::1")
                     .setBlocking(true)
                     .setMtu(1500)
+            }
+
+            // Phase 7: Auto-Routing via HTTP Proxy (Android 10+)
+            if (httpsFilteringEnabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                try {
+                    val proxyInfo = android.net.ProxyInfo.buildDirectProxy("127.0.0.1", 8080)
+                    builder.setHttpProxy(proxyInfo)
+                    Timber.d("VPN Auto-Routing (HTTP Proxy) enabled to 127.0.0.1:8080")
+                } catch (e: Exception) {
+                    Timber.w(e, "Could not set HTTP proxy for VPN")
+                }
             }
 
             // Exclude our own app from VPN to avoid loops

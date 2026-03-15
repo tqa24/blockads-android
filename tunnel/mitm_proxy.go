@@ -269,12 +269,8 @@ func (p *MitmProxy) mitmIntercept(clientConn net.Conn, host, hostname string) {
 	// Tell the client the tunnel is established
 	clientConn.Write([]byte("HTTP/1.1 200 Connection Established\r\n\r\n"))
 
-	// Get a dynamic TLS cert for this hostname
-	tlsConfig, err := p.certMgr.GetTLSConfigForHost(hostname)
-	if err != nil {
-		logf("MITM: cert gen failed for %s: %v", hostname, err)
-		return
-	}
+	// Get the shared dynamic TLS config (handles SNI & caching & singleflight internally)
+	tlsConfig := p.certMgr.GetDynamicTLSConfigForHost(hostname)
 
 	// ── Handshake Fail-Safe ──────────────────────────────────────────
 	// TLS handshake with the client using our dynamic cert.
@@ -309,12 +305,8 @@ func (p *MitmProxy) serveLocalAssetDirect(clientConn net.Conn, hostname string) 
 	// Tell the client the tunnel is established
 	clientConn.Write([]byte("HTTP/1.1 200 Connection Established\r\n\r\n"))
 
-	// Get a dynamic TLS cert for local.pwhs.app
-	tlsConfig, err := p.certMgr.GetTLSConfigForHost(hostname)
-	if err != nil {
-		logf("Local asset server: cert failed for %s: %v", hostname, err)
-		return
-	}
+	// Get the shared dynamic TLS config (handles SNI & caching & singleflight internally)
+	tlsConfig := p.certMgr.GetDynamicTLSConfigForHost(hostname)
 
 	// TLS handshake with the client
 	clientTLS := tls.Server(clientConn, tlsConfig)

@@ -361,7 +361,6 @@ func (e *Engine) Start(fd int, protector SocketProtector, wgConfigJSON string) {
 // Stop stops the engine.
 func (e *Engine) Stop() {
 	e.mu.Lock()
-	defer e.mu.Unlock()
 
 	e.running = false
 
@@ -375,13 +374,17 @@ func (e *Engine) Stop() {
 		e.router.Stop()
 	}
 
+	// Grab MITM proxy reference and clear it while locked
+	proxy := e.mitmProxy
+	e.mitmProxy = nil
+
+	// Close TUN, shutdown resolver, clear caches — all while locked
 	if e.tunFile != nil {
-		e.tunFile.Close() // Safely close the duplicated fd
+		e.tunFile.Close()
 		e.tunFile = nil
 	}
 	if e.resolver != nil {
 		e.resolver.Shutdown()
-		// DO NOT set e.resolver = nil to prevent panics in concurrent handleDNSQuery routines
 	}
 	e.safeSearch.ClearCache()
 
@@ -400,6 +403,13 @@ func (e *Engine) Stop() {
 	if e.secBloom != nil {
 		e.secBloom.Close()
 		e.secBloom = nil
+	}
+
+	e.mu.Unlock()
+
+	// Stop proxy OUTSIDE the lock (proxy.Stop() may block briefly)
+	if proxy != nil {
+		proxy.Stop()
 	}
 }
 

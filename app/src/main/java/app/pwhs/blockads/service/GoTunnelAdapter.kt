@@ -171,13 +171,45 @@ class GoTunnelAdapter(
      * This method blocks the calling thread until [stop] is called.
      *
      * @param vpnInterface The TUN file descriptor from VpnService
-     * @param wgConfigJson Optional WireGuard config JSON. If non-empty, WireGuard
-     *                     is initialized inside Go BEFORE the packet read loop starts.
-     *                     Pass "" for DNS-only mode.
+     * @param wgConfigJson Optional WireGuard config JSON
+     * @param httpsFilteringEnabled True if MITM proxy should be started
+     * @param selectedBrowsers Set of package names allowed for MITM
+     * @param certDir Directory to store the proxy's root CA certificate
      */
-    fun start(vpnInterface: ParcelFileDescriptor, wgConfigJson: String = "") {
+    fun start(
+        vpnInterface: ParcelFileDescriptor, 
+        wgConfigJson: String = "",
+        httpsFilteringEnabled: Boolean = false,
+        selectedBrowsers: Set<String> = emptySet(),
+        certDir: String = ""
+    ) {
         if (isRunning) return
         isRunning = true
+
+        // 1. Synchronize the MITM Proxy State before starting the tunnel
+        if (httpsFilteringEnabled && certDir.isNotEmpty()) {
+            try {
+                // Map package names to UIDs and set them in Go
+                val pm = vpnService.packageManager
+                val uids = selectedBrowsers.mapNotNull { pkg ->
+                    try {
+                        pm.getPackageUid(pkg, 0)
+                    } catch (e: Exception) {
+                        null
+                    }
+                }.joinToString(",")
+                
+                if (uids.isNotEmpty()) {
+                    engine.setMitmAllowedUIDs(uids)
+                }
+
+                // Start the MITM Proxy in Go (listens on 127.0.0.1:8080)
+                engine.startMitmProxy("127.0.0.1:8080", certDir)
+                Timber.d("MITM Proxy automatically started on VPN boot")
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to auto-start MITM proxy on VPN boot")
+            }
+        }
 
         setupAppResolver()
         setupDomainChecker()

@@ -228,27 +228,28 @@ class AdBlockVpnService : VpnService() {
 
         isReconnecting = true
 
-        // Stop monitoring
+        // Stop monitoring (lightweight, safe on main thread)
         networkMonitor?.stopMonitoring()
         stopBatteryMonitoring()
         stopNotificationUpdates()
 
-        // Stop Go tunnel engine so its running flags are reset
-        goTunnelAdapter.stop()
+        // Move ALL blocking Go native calls off the main thread
+        serviceScope.launch(Dispatchers.IO) {
+            // Stop Go tunnel engine (this is the heavy native call that was causing ANR)
+            goTunnelAdapter.stop()
 
-        // Close current VPN interface
-        try {
-            vpnInterface?.close()
-        } catch (e: Exception) {
-            Timber.e(e, "Error closing VPN interface during restart")
-        }
-        vpnInterface = null
+            // Close current VPN interface
+            try {
+                vpnInterface?.close()
+            } catch (e: Exception) {
+                Timber.e(e, "Error closing VPN interface during restart")
+            }
+            vpnInterface = null
 
-        // Reset retry manager for fresh start
-        retryManager.reset()
+            // Reset retry manager for fresh start
+            retryManager.reset()
 
-        // Brief delay to let old VPN resources (file descriptors, sockets) clean up
-        serviceScope.launch {
+            // Brief delay to let old VPN resources (file descriptors, sockets) clean up
             delay(RESTART_CLEANUP_DELAY_MS)
             startVpn()
         }
@@ -451,10 +452,14 @@ class AdBlockVpnService : VpnService() {
                     ""
                 }
 
+                // Read further HTTPS Filtering config (httpsFilteringEnabled is already loaded at the top)
+                val selectedBrowsers = appPrefs.getSelectedBrowsersSnapshot()
+                val certDir = filesDir.absolutePath
+
                 vpnInterface?.let {
                     // start() blocks the coroutine while reading from TUN
                     // WireGuard init happens atomically inside Go before any packets are read
-                    goTunnelAdapter.start(it, wgConfigJson)
+                    goTunnelAdapter.start(it, wgConfigJson, httpsFilteringEnabled, selectedBrowsers, certDir)
                 }
 
             } catch (e: Exception) {
@@ -650,41 +655,44 @@ class AdBlockVpnService : VpnService() {
         isReconnecting = false
         startTimestamp = 0L
 
-        // Stop Go tunnel engine (also stops WireGuard adapter via Router.Stop())
-        goTunnelAdapter.stop()
-
-        // Stop network monitoring
+        // Stop monitoring (lightweight, safe on main thread)
         networkMonitor?.stopMonitoring()
-
-        // Stop battery monitoring
         stopBatteryMonitoring()
-
-        // Stop notification updates
         stopNotificationUpdates()
 
-        runBlocking {
-            appPrefs.setVpnEnabled(false)
-        }
+        // Move ALL blocking Go native calls off the main thread
+        serviceScope.launch(Dispatchers.IO) {
+            // Stop Go tunnel engine (this is the heavy native call that was causing ANR)
+            goTunnelAdapter.stop()
 
-        try {
-            vpnInterface?.close()
-        } catch (e: Exception) {
-            Timber.e("Error closing VPN interface: $e")
-        }
-        vpnInterface = null
-        _state.value = VpnState.STOPPED
-        stopForeground(STOP_FOREGROUND_REMOVE)
-        if (showStoppedNotification) {
-            stopForeground(STOP_FOREGROUND_DETACH)
-            showStoppedNotification()
-        } else {
-            stopForeground(STOP_FOREGROUND_REMOVE)
-        }
-        stopSelf()
-        Timber.d("VPN stopped")
+            runBlocking {
+                appPrefs.setVpnEnabled(false)
+            }
 
-        // Update home screen widgets
-        AdBlockWidgetProvider.sendUpdateBroadcast(this)
+            try {
+                vpnInterface?.close()
+            } catch (e: Exception) {
+                Timber.e("Error closing VPN interface: $e")
+            }
+            vpnInterface = null
+
+            // Switch back to main thread for UI/Service lifecycle operations
+            kotlinx.coroutines.withContext(Dispatchers.Main) {
+                _state.value = VpnState.STOPPED
+                stopForeground(STOP_FOREGROUND_REMOVE)
+                if (showStoppedNotification) {
+                    stopForeground(STOP_FOREGROUND_DETACH)
+                    showStoppedNotification()
+                } else {
+                    stopForeground(STOP_FOREGROUND_REMOVE)
+                }
+                stopSelf()
+                Timber.d("VPN stopped")
+
+                // Update home screen widgets
+                AdBlockWidgetProvider.sendUpdateBroadcast(this@AdBlockVpnService)
+            }
+        }
     }
 
     override fun onRevoke() {

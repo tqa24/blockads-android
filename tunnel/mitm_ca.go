@@ -46,6 +46,9 @@ type CertManager struct {
 
 	// Per-host cert cache (host → *tls.Certificate)
 	certCache sync.Map
+
+	// flightCache deduplicates concurrent cert generation requests (host → *sync.WaitGroup)
+	flightCache sync.Map
 }
 
 // NewCertManager creates a CertManager and initialises the Root CA.
@@ -69,16 +72,58 @@ func (cm *CertManager) GetCACertPEM() string {
 	return string(cm.caPEM)
 }
 
-// GetTLSConfigForHost returns a *tls.Config with a dynamically generated
-// certificate for the given hostname, signed by the Root CA.
-func (cm *CertManager) GetTLSConfigForHost(host string) (*tls.Config, error) {
-	cert, err := cm.getCertForHost(host)
-	if err != nil {
-		return nil, err
-	}
+// GetDynamicTLSConfigForHost returns a *tls.Config configured with a
+// GetCertificate callback. This allows the TLS server to dynamically
+// fetch or generate an ECDSA certificate exactly when the handshake begins.
+// It captures the defaultHost from the CONNECT request as a fallback in case
+// the client does not send SNI (Server Name Indication).
+func (cm *CertManager) GetDynamicTLSConfigForHost(defaultHost string) *tls.Config {
 	return &tls.Config{
-		Certificates: []tls.Certificate{*cert},
-	}, nil
+		GetCertificate: func(hello *tls.ClientHelloInfo) (*tls.Certificate, error) {
+			host := hello.ServerName
+			if host == "" {
+				host = defaultHost
+			}
+			return cm.getCertificateWithDedup(host)
+		},
+	}
+}
+
+// getCertificateWithDedup provides fast-path caching and Singleflight deduplication
+func (cm *CertManager) getCertificateWithDedup(host string) (*tls.Certificate, error) {
+	// ── FAST PATH: Cache hit ────────────────────────────────────────────────
+	if cached, ok := cm.certCache.Load(host); ok {
+		return cached.(*tls.Certificate), nil
+	}
+
+	// ── SLOW PATH: Deduplicate and Generate ─────────────────────────────────
+	// Check if another goroutine is already generating a cert for this host.
+	// If so, wait for it to finish and use its result.
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	actual, loaded := cm.flightCache.LoadOrStore(host, wg)
+	
+	if loaded {
+		// Another goroutine won the race to generate the cert.
+		// Wait for it to finish.
+		actual.(*sync.WaitGroup).Wait()
+		
+		// The cert should now be in the main certCache.
+		if cached, ok := cm.certCache.Load(host); ok {
+			return cached.(*tls.Certificate), nil
+		}
+		// If it's not in the cache, the other goroutine failed.
+		// We could retry, but for simplicity we fall through and fail here.
+		return nil, fmt.Errorf("concurrent certificate generation failed for %s", host)
+	}
+
+	// We won the race. We must generate the cert, cache it, and unblock others.
+	defer func() {
+		cm.flightCache.Delete(host)
+		wg.Done()
+	}()
+
+	return cm.getCertForHost(host)
 }
 
 // ── Internal ─────────────────────────────────────────────────────────────────

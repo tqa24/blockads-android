@@ -25,7 +25,6 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.CheckCircle
@@ -84,8 +83,6 @@ import java.util.Locale
 @Composable
 fun DomainRulesScreen(
     modifier: Modifier = Modifier,
-    initialTab: Int = 0,
-    onNavigateBack: () -> Unit = { },
     viewModel: DomainRulesViewModel = koinViewModel()
 ) {
     val whitelistDomains by viewModel.whitelistDomains.collectAsStateWithLifecycle()
@@ -94,7 +91,7 @@ fun DomainRulesScreen(
     var searchQuery by remember { mutableStateOf("") }
     var showAddDialog by remember { mutableStateOf(false) }
 
-    val pagerState = rememberPagerState(initialPage = initialTab) { 2 }
+    val pagerState = rememberPagerState(initialPage = 0) { 2 }
     val scope = rememberCoroutineScope()
 
     val filteredWhitelist = remember(whitelistDomains, searchQuery) {
@@ -118,14 +115,6 @@ fun DomainRulesScreen(
                         stringResource(R.string.domain_rules_title),
                         fontWeight = FontWeight.Bold
                     )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
-                        )
-                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background

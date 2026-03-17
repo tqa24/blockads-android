@@ -141,7 +141,7 @@ data object AppManagementKey : NavKey
 data object AppearanceKey : NavKey
 
 @Serializable
-data class DomainRulesKey(val initialTab: Int = 0) : NavKey
+data object DomainRulesKey : NavKey
 
 
 @Serializable
@@ -172,9 +172,9 @@ enum class BottomBarScreen(
         icon = R.drawable.ic_fire
     ),
 
-    Whitelist(
-        labelRes = R.string.dns_provider_title,
-        icon = R.drawable.ic_dns
+    DomainRule(
+        labelRes = R.string.domain_rules_title,
+        icon = R.drawable.ic_crown
     ),
 
     Settings(
@@ -193,7 +193,7 @@ fun HomeApp(onRequestVpnPermission: () -> Unit = {}) {
     val homeStack = rememberNavBackStack(HomeKey)
     val filterStack = rememberNavBackStack(FilterKey)
     val firewallStack = rememberNavBackStack(FireWallKey)
-    val dnsProviderStack = rememberNavBackStack(DnsProviderKey)
+    val domainRuleStack = rememberNavBackStack(DomainRulesKey)
     val settingsStack = rememberNavBackStack(SettingsKey)
     var currentTab by rememberSaveable { mutableStateOf(BottomBarScreen.Home) }
 
@@ -201,7 +201,7 @@ fun HomeApp(onRequestVpnPermission: () -> Unit = {}) {
         BottomBarScreen.Home -> homeStack
         BottomBarScreen.FilterSetup -> filterStack
         BottomBarScreen.Firewall -> firewallStack
-        BottomBarScreen.Whitelist -> dnsProviderStack
+        BottomBarScreen.DomainRule -> domainRuleStack
         BottomBarScreen.Settings -> settingsStack
     }
 
@@ -209,7 +209,7 @@ fun HomeApp(onRequestVpnPermission: () -> Unit = {}) {
         BottomBarScreen.Home,
         BottomBarScreen.FilterSetup,
         BottomBarScreen.Firewall,
-        BottomBarScreen.Whitelist,
+        BottomBarScreen.DomainRule,
         BottomBarScreen.Settings
     )
     var showBottomBar by rememberSaveable { mutableStateOf(true) }
@@ -226,7 +226,7 @@ fun HomeApp(onRequestVpnPermission: () -> Unit = {}) {
                             BottomBarScreen.Home -> homeStack
                             BottomBarScreen.FilterSetup -> filterStack
                             BottomBarScreen.Firewall -> firewallStack
-                            BottomBarScreen.Whitelist -> dnsProviderStack
+                            BottomBarScreen.DomainRule -> domainRuleStack
                             BottomBarScreen.Settings -> settingsStack
                         },
                         onClick = {
@@ -302,8 +302,8 @@ fun HomeApp(onRequestVpnPermission: () -> Unit = {}) {
                 entry<FireWallKey> {
                     FirewallScreen()
                 }
-                entry<DnsProviderKey> {
-                    DnsProviderScreen()
+                entry<DomainRulesKey> {
+                    DomainRulesScreen()
                 }
                 entry<SettingsKey> {
                     SettingsScreen(
@@ -323,10 +323,6 @@ fun HomeApp(onRequestVpnPermission: () -> Unit = {}) {
                             showBottomBar = false
                             currentTab = BottomBarScreen.FilterSetup
                         },
-                        onNavigateToDomainRules = { initialTab ->
-                            showBottomBar = false
-                            settingsStack.add(DomainRulesKey(initialTab))
-                        },
                         onNavigateToWhitelistApps = {
                             showBottomBar = false
                             settingsStack.add(WhiteListAppKey)
@@ -338,6 +334,10 @@ fun HomeApp(onRequestVpnPermission: () -> Unit = {}) {
                         onNavigateToHttpsFiltering = {
                             showBottomBar = false
                             settingsStack.add(HttpsFilteringKey)
+                        },
+                        onNavigateToDNSProvider = {
+                            showBottomBar = false
+                            settingsStack.add(DnsProviderKey)
                         }
                     )
                 }
@@ -406,9 +406,8 @@ fun HomeApp(onRequestVpnPermission: () -> Unit = {}) {
                         }
                     )
                 }
-                entry<DomainRulesKey> {
-                    DomainRulesScreen(
-                        initialTab = it.initialTab,
+                entry<DnsProviderKey> {
+                    DnsProviderScreen(
                         onNavigateBack = {
                             showBottomBar = true
                             settingsStack.removeLastOrNull()

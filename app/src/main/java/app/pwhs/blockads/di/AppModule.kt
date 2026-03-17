@@ -17,12 +17,10 @@ import app.pwhs.blockads.ui.settings.SettingsViewModel
 import app.pwhs.blockads.ui.statistics.StatisticsViewModel
 import app.pwhs.blockads.ui.whitelist.AppWhitelistViewModel
 import app.pwhs.blockads.ui.appmanagement.AppManagementViewModel
-import app.pwhs.blockads.ui.blocklistdomain.BlocklistDomainViewModel
 import app.pwhs.blockads.ui.customrules.CustomRulesViewModel
 import app.pwhs.blockads.ui.domainrules.DomainRulesViewModel
 import app.pwhs.blockads.ui.firewall.FirewallViewModel
 import app.pwhs.blockads.ui.splash.SplashViewModel
-import app.pwhs.blockads.ui.whitelistdomain.WhitelistDomainViewModel
 import app.pwhs.blockads.ui.wireguard.WireGuardImportViewModel
 import app.pwhs.blockads.ui.httpsfiltering.HttpsFilteringViewModel
 import io.ktor.client.HttpClient
@@ -160,18 +158,6 @@ val appModule = module {
     viewModel {
         SplashViewModel(
             appPrefs = get(),
-        )
-    }
-    viewModel {
-        WhitelistDomainViewModel(
-            whitelistDomainDao = get(),
-            application = androidApplication()
-        )
-    }
-    viewModel {
-        BlocklistDomainViewModel(
-            customDnsRuleDao = get(),
-            application = androidApplication()
         )
     }
     viewModel {

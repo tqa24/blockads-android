@@ -58,11 +58,6 @@ class SettingsViewModel(
 
     val whitelistDomains: StateFlow<List<WhitelistDomain>> = whitelistDomainDao.getAll()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    val blocklistDomainsCount: StateFlow<Int> = customDnsRuleDao.getAllFlow()
-        .map { rules -> rules.count { it.ruleType == RuleType.BLOCK } }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
-
     val autoUpdateEnabled: StateFlow<Boolean> = appPrefs.autoUpdateEnabled
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
@@ -101,6 +96,13 @@ class SettingsViewModel(
 
     val milestoneNotificationsEnabled: StateFlow<Boolean> = appPrefs.milestoneNotificationsEnabled
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
+    val upstreamDns: StateFlow<String> = appPrefs.upstreamDns
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5000),
+            AppPreferences.DEFAULT_UPSTREAM_DNS
+        )
 
     private val _events = MutableSharedFlow<UiEvent>(extraBufferCapacity = 1)
     val events: SharedFlow<UiEvent> = _events.asSharedFlow()

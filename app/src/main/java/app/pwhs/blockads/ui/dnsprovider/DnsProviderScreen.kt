@@ -7,7 +7,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -38,7 +42,8 @@ import org.koin.androidx.compose.koinViewModel
 @Composable
 fun DnsProviderScreen(
     modifier: Modifier = Modifier,
-    viewModel: DnsProviderViewModel = koinViewModel()
+    viewModel: DnsProviderViewModel = koinViewModel(),
+    onNavigateBack: () -> Unit = {}
 ) {
     val selectedProviderId by viewModel.selectedProviderId.collectAsStateWithLifecycle()
     val customDnsEnabled by viewModel.customDnsEnabled.collectAsStateWithLifecycle()
@@ -62,7 +67,15 @@ fun DnsProviderScreen(
                 title = { Text(stringResource(R.string.dns_provider_title)) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background
-                )
+                ),
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back"
+                        )
+                    }
+                },
             )
         }
     ) { padding ->

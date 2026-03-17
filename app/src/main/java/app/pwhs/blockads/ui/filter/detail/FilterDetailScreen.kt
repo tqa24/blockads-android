@@ -70,7 +70,7 @@ import org.koin.core.parameter.parametersOf
 fun FilterDetailScreen(
     filterId: Long,
     modifier: Modifier = Modifier,
-    viewModel: FilterDetailViewModel = koinViewModel { parametersOf(filterId) },
+    viewModel: FilterDetailViewModel = koinViewModel(key = filterId.toString()) { parametersOf(filterId) },
     onNavigateBack: () -> Unit = { }
 ) {
     val filter by viewModel.filter.collectAsStateWithLifecycle()

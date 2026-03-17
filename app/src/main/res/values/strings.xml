@@ -120,6 +120,11 @@
     <string name="blocklist_domain_removed">Domain removed from blocklist</string>
     <string name="blocklist_domain_already_exists">Domain is already blocklisted</string>
 
+    <!-- Domain Rules (merged screen) -->
+    <string name="domain_rules_title">Domain Rules</string>
+    <string name="domain_rules_tab_whitelist">Whitelist</string>
+    <string name="domain_rules_tab_blocklist">Blocklist</string>
+
     <!-- About -->
     <string name="about_title">About</string>
     <string name="about_description">Free, open-source ad blocker.\nNo data collection. No tracking.</string>

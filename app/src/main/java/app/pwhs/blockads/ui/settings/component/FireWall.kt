@@ -46,9 +46,8 @@ fun FireWall(
     autoUpdateEnabled: Boolean,
     whitelistCount: Int = 0,
     onNavigateToFilterSetup: () -> Unit = {},
-    onNavigateToWhitelistDomains: () -> Unit = {},
+    onNavigateToDomainRules: (Int) -> Unit = {},
     blocklistCount: Int = 0,
-    onNavigateToBlocklistDomains: () -> Unit = {},
     onSetAutoUpdateWifiOnly: (Boolean) -> Unit = {},
     onSetAutoUpdateFrequency: (String) -> Unit = {},
     onSetAutoUpdateNotification: (String) -> Unit = {},
@@ -67,7 +66,7 @@ fun FireWall(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { onNavigateToWhitelistDomains() }
+                    .clickable { onNavigateToDomainRules(0) }
                     .padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -111,7 +110,7 @@ fun FireWall(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { onNavigateToBlocklistDomains() }
+                    .clickable { onNavigateToDomainRules(1) }
                     .padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {

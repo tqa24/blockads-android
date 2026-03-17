@@ -85,8 +85,7 @@ fun SettingsScreen(
     onNavigateToAppearance: () -> Unit = { },
     onNavigateToAppManagement: () -> Unit = { },
     onNavigateToFilterSetup: () -> Unit = { },
-    onNavigateToWhitelistDomains: () -> Unit = { },
-    onNavigateToBlocklistDomains: () -> Unit = { },
+    onNavigateToDomainRules: (Int) -> Unit = { },
     onNavigateToWhitelistApps: () -> Unit = { },
     onNavigateToWireGuardImport: () -> Unit = { },
     onNavigateToHttpsFiltering: () -> Unit = { }
@@ -387,8 +386,7 @@ fun SettingsScreen(
             FireWall(
                 modifier = Modifier.fillMaxWidth(),
                 onNavigateToFilterSetup = onNavigateToFilterSetup,
-                onNavigateToWhitelistDomains = onNavigateToWhitelistDomains,
-                onNavigateToBlocklistDomains = onNavigateToBlocklistDomains,
+                onNavigateToDomainRules = onNavigateToDomainRules,
                 whitelistCount = whitelistDomains.size,
                 blocklistCount = blocklistDomainsCount,
                 filterLists = filterLists,

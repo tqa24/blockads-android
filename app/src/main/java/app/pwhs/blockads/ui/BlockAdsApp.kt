@@ -34,8 +34,8 @@ import app.pwhs.blockads.data.datastore.AppPreferences
 import app.pwhs.blockads.ui.about.AboutScreen
 import app.pwhs.blockads.ui.appearance.AppearanceScreen
 import app.pwhs.blockads.ui.appmanagement.AppManagementScreen
-import app.pwhs.blockads.ui.blocklistdomain.BlocklistDomainScreen
 import app.pwhs.blockads.ui.customrules.CustomRulesScreen
+import app.pwhs.blockads.ui.domainrules.DomainRulesScreen
 import app.pwhs.blockads.ui.dnsprovider.DnsProviderScreen
 import app.pwhs.blockads.ui.filter.FilterSetupScreen
 import app.pwhs.blockads.ui.filter.detail.FilterDetailScreen
@@ -48,7 +48,6 @@ import app.pwhs.blockads.ui.settings.SettingsScreen
 import app.pwhs.blockads.ui.splash.SplashScreen
 import app.pwhs.blockads.ui.statistics.StatisticsScreen
 import app.pwhs.blockads.ui.whitelist.AppWhitelistScreen
-import app.pwhs.blockads.ui.whitelistdomain.WhitelistDomainScreen
 import app.pwhs.blockads.ui.wireguard.WireGuardImportScreen
 import app.pwhs.blockads.ui.httpsfiltering.HttpsFilteringScreen
 import kotlinx.serialization.Serializable
@@ -142,10 +141,7 @@ data object AppManagementKey : NavKey
 data object AppearanceKey : NavKey
 
 @Serializable
-data object WhiteListDomainKey : NavKey
-
-@Serializable
-data object BlockListDomainKey : NavKey
+data class DomainRulesKey(val initialTab: Int = 0) : NavKey
 
 
 @Serializable
@@ -327,13 +323,9 @@ fun HomeApp(onRequestVpnPermission: () -> Unit = {}) {
                             showBottomBar = false
                             currentTab = BottomBarScreen.FilterSetup
                         },
-                        onNavigateToBlocklistDomains = {
+                        onNavigateToDomainRules = { initialTab ->
                             showBottomBar = false
-                            settingsStack.add(BlockListDomainKey)
-                        },
-                        onNavigateToWhitelistDomains = {
-                            showBottomBar = false
-                            settingsStack.add(WhiteListDomainKey)
+                            settingsStack.add(DomainRulesKey(initialTab))
                         },
                         onNavigateToWhitelistApps = {
                             showBottomBar = false
@@ -414,16 +406,9 @@ fun HomeApp(onRequestVpnPermission: () -> Unit = {}) {
                         }
                     )
                 }
-                entry<BlockListDomainKey> {
-                    BlocklistDomainScreen(
-                        onNavigateBack = {
-                            showBottomBar = true
-                            settingsStack.removeLastOrNull()
-                        }
-                    )
-                }
-                entry<WhiteListDomainKey> {
-                    WhitelistDomainScreen(
+                entry<DomainRulesKey> {
+                    DomainRulesScreen(
+                        initialTab = it.initialTab,
                         onNavigateBack = {
                             showBottomBar = true
                             settingsStack.removeLastOrNull()

@@ -27,6 +27,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -70,8 +71,8 @@ fun DomainDetailBottomSheet(
 
     // State for fetching specific blocking lists
     val blockingLists = remember { androidx.compose.runtime.mutableStateOf<List<String>?>(null) }
-    
-    androidx.compose.runtime.LaunchedEffect(entry) {
+
+    LaunchedEffect(entry) {
         if (entry.isBlocked && entry.blockedBy.equals(FilterListRepository.BLOCK_REASON_FILTER_LIST, ignoreCase = true)) {
             viewModel.getBlockingFilterLists(entry.domain) { lists ->
                 blockingLists.value = lists

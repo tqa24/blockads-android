@@ -661,8 +661,7 @@ class FilterListRepository(
             val trieFile = File(context.filesDir, "remote_filters/${filter.id}.trie")
             if (!trieFile.exists() || trieFile.length() == 0L) continue
             try {
-                val trie = DomainTrie.loadFromMmap(trieFile)
-                if (trie?.containsOrParent(targetDomain) == true) {
+                if (tunnel.Tunnel.checkDomainInTrieFile(trieFile.absolutePath, targetDomain)) {
                     matchedListNames.add(filter.name)
                 }
             } catch (e: Exception) {

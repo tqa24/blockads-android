@@ -946,3 +946,17 @@ func ResolveHostForProtection(hostname string) string {
 	}
 	return ips[0]
 }
+
+// CheckDomainInTrieFile allows Kotlin to individually query a specific pre-compiled
+// .trie file to see if it blocks a domain. Used for the "find blocking filter" feature.
+func CheckDomainInTrieFile(filePath, domain string) bool {
+	if filePath == "" || domain == "" {
+		return false
+	}
+	t, err := LoadMmapTrie(filePath)
+	if err != nil {
+		return false
+	}
+	defer t.Close()
+	return t.ContainsOrParent(domain)
+}

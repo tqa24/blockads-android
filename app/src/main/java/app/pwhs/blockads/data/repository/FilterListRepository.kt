@@ -39,9 +39,9 @@ class FilterListRepository(
         const val BLOCK_REASON_UPSTREAM_DNS = "upstream_dns"
 
         private const val FILTER_LIST_JSON_URL =
-            "https://raw.githubusercontent.com/pass-with-high-score/blockads_filter_bin/refs/heads/main/output/filter_lists.json"
+            "https://raw.githubusercontent.com/pass-with-high-score/blockads-default-filter/refs/heads/main/output/filter_lists.json"
         private const val BASE_BIN_URL =
-            "https://raw.githubusercontent.com/pass-with-high-score/blockads_filter_bin/refs/heads/main/output"
+            "https://raw.githubusercontent.com/pass-with-high-score/blockads-default-filter/refs/heads/main/output"
 
         val DEFAULT_LISTS = listOf(
             // ── Vietnamese ──────────────────────────────────────────────
@@ -282,10 +282,14 @@ class FilterListRepository(
     }
 
     // Paths to pre-compiled binary files for Go Native Engine (CSV strings)
-    @Volatile private var adTriePaths: String = ""
-    @Volatile private var securityTriePaths: String = ""
-    @Volatile private var adBloomPaths: String = ""
-    @Volatile private var securityBloomPaths: String = ""
+    @Volatile
+    private var adTriePaths: String = ""
+    @Volatile
+    private var securityTriePaths: String = ""
+    @Volatile
+    private var adBloomPaths: String = ""
+    @Volatile
+    private var securityBloomPaths: String = ""
 
     private val loadMutex = Mutex()
 
@@ -311,7 +315,10 @@ class FilterListRepository(
         return if (file.exists() && file.length() > 0) file.absolutePath else null
     }
 
-    private inline fun checkDomainAndParents(domain: String, checker: (String) -> Boolean): Boolean {
+    private inline fun checkDomainAndParents(
+        domain: String,
+        checker: (String) -> Boolean
+    ): Boolean {
         if (checker(domain)) return true
         var d = domain
         while (d.contains('.')) {
@@ -379,15 +386,15 @@ class FilterListRepository(
                 Timber.d("Seeded new built-in filter: ${defaultList.name}")
             } else {
                 val needsUpdate = existing.url != defaultList.url ||
-                    existing.description != defaultList.description ||
-                    existing.category != defaultList.category ||
-                    existing.bloomUrl != defaultList.bloomUrl ||
-                    existing.trieUrl != defaultList.trieUrl ||
-                    existing.cssUrl != defaultList.cssUrl ||
-                    existing.ruleCount != defaultList.ruleCount ||
-                    existing.domainCount != defaultList.ruleCount ||
-                    existing.originalUrl != defaultList.originalUrl ||
-                    !existing.isBuiltIn
+                        existing.description != defaultList.description ||
+                        existing.category != defaultList.category ||
+                        existing.bloomUrl != defaultList.bloomUrl ||
+                        existing.trieUrl != defaultList.trieUrl ||
+                        existing.cssUrl != defaultList.cssUrl ||
+                        existing.ruleCount != defaultList.ruleCount ||
+                        existing.domainCount != defaultList.ruleCount ||
+                        existing.originalUrl != defaultList.originalUrl ||
+                        !existing.isBuiltIn
 
                 if (needsUpdate) {
                     filterListDao.update(
@@ -458,7 +465,8 @@ class FilterListRepository(
                         Timber.d("Synced URLs for: ${remote.name}")
                     }
                 } else {
-                    val category = if (remote.category == "security") FilterList.CATEGORY_SECURITY else FilterList.CATEGORY_AD
+                    val category =
+                        if (remote.category == "security") FilterList.CATEGORY_SECURITY else FilterList.CATEGORY_AD
                     filterListDao.insert(
                         FilterList(
                             name = remote.name,
@@ -502,10 +510,12 @@ class FilterListRepository(
                     return pattern.find(cleaned)?.groupValues?.get(1)
                         ?.replace("\\u0026", "&")
                 }
+
                 fun extractInt(key: String): Int {
                     val pattern = "\"$key\"\\s*:\\s*(\\d+)".toRegex()
                     return pattern.find(cleaned)?.groupValues?.get(1)?.toIntOrNull() ?: 0
                 }
+
                 fun extractBoolean(key: String): Boolean {
                     val pattern = "\"$key\"\\s*:\\s*(true|false)".toRegex()
                     return pattern.find(cleaned)?.groupValues?.get(1) == "true"
@@ -584,7 +594,11 @@ class FilterListRepository(
                         }
                         // Update per-filter domainCount so UI shows the correct value
                         if (filter.domainCount != filter.ruleCount) {
-                            filterListDao.updateStats(id = filter.id, count = filter.ruleCount, timestamp = System.currentTimeMillis())
+                            filterListDao.updateStats(
+                                id = filter.id,
+                                count = filter.ruleCount,
+                                timestamp = System.currentTimeMillis()
+                            )
                         }
                         totalCount += filter.ruleCount
                     } else {
@@ -610,38 +624,39 @@ class FilterListRepository(
         }
     }
 
-    private suspend fun compileCosmeticRules(enabledLists: List<FilterList>) = withContext(Dispatchers.IO) {
-        try {
-            val validLists = enabledLists.filter { it.category != FilterList.CATEGORY_SECURITY }
-            if (validLists.isEmpty()) return@withContext
+    private suspend fun compileCosmeticRules(enabledLists: List<FilterList>) =
+        withContext(Dispatchers.IO) {
+            try {
+                val validLists = enabledLists.filter { it.category != FilterList.CATEGORY_SECURITY }
+                if (validLists.isEmpty()) return@withContext
 
-            val cssBuilder = StringBuilder()
-            var rulesAdded = 0
+                val cssBuilder = StringBuilder()
+                var rulesAdded = 0
 
-            for (filter in validLists) {
-                if (filter.cssUrl.isNullOrEmpty()) continue
-                val cssFile = File(context.filesDir, "remote_filters/${filter.id}.css")
-                if (cssFile.exists() && cssFile.length() > 0) {
-                    val cssSnippet = downloadManager.getInjectableCss(cssFile)
-                    if (cssSnippet.isNotEmpty()) {
-                        cssBuilder.append(cssSnippet)
-                        rulesAdded++
+                for (filter in validLists) {
+                    if (filter.cssUrl.isNullOrEmpty()) continue
+                    val cssFile = File(context.filesDir, "remote_filters/${filter.id}.css")
+                    if (cssFile.exists() && cssFile.length() > 0) {
+                        val cssSnippet = downloadManager.getInjectableCss(cssFile)
+                        if (cssSnippet.isNotEmpty()) {
+                            cssBuilder.append(cssSnippet)
+                            rulesAdded++
+                        }
                     }
                 }
-            }
 
-            if (rulesAdded > 0) {
-                val finalCssFile = File(context.filesDir, "$CACHE_DIR/cosmetic_rules.css")
-                finalCssFile.parentFile?.mkdirs()
-                finalCssFile.writeText(cssBuilder.toString())
-                Timber.d("Wrote cosmetic CSS (${cssBuilder.length} bytes)")
-            } else {
-                File(context.filesDir, "$CACHE_DIR/cosmetic_rules.css").delete()
+                if (rulesAdded > 0) {
+                    val finalCssFile = File(context.filesDir, "$CACHE_DIR/cosmetic_rules.css")
+                    finalCssFile.parentFile?.mkdirs()
+                    finalCssFile.writeText(cssBuilder.toString())
+                    Timber.d("Wrote cosmetic CSS (${cssBuilder.length} bytes)")
+                } else {
+                    File(context.filesDir, "$CACHE_DIR/cosmetic_rules.css").delete()
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to compile cosmetic rules")
             }
-        } catch (e: Exception) {
-            Timber.e(e, "Failed to compile cosmetic rules")
         }
-    }
 
     suspend fun forceUpdateAllEnabledFilters(): Result<Int> = withContext(Dispatchers.IO) {
         try {
@@ -657,13 +672,17 @@ class FilterListRepository(
                 // Force download the binary files from the remote server
                 val result = downloadManager.downloadFilterList(filter, forceUpdate = true)
                 if (result.isSuccess) {
-                    filterListDao.updateStats(id = filter.id, count = filter.ruleCount, timestamp = System.currentTimeMillis())
+                    filterListDao.updateStats(
+                        id = filter.id,
+                        count = filter.ruleCount,
+                        timestamp = System.currentTimeMillis()
+                    )
                     totalCount += filter.ruleCount
                 } else {
                     Timber.e("Failed to force update built-in filter: ${filter.name}")
                 }
             }
-            
+
             // Reload into the Go engine
             loadAllEnabledFilters()
             Result.success(totalCount)
@@ -678,13 +697,17 @@ class FilterListRepository(
             if (filter.isBuiltIn) {
                 // Fetch the latest remote configs
                 fetchAndSyncRemoteFilterLists()
-                
+
                 // Get the updated entity from DB to have the latest ruleCount & URLs
                 val updatedFilter = filterListDao.getById(filter.id) ?: filter
-                
+
                 val result = downloadManager.downloadFilterList(updatedFilter, forceUpdate = true)
                 if (result.isSuccess) {
-                    filterListDao.updateStats(id = updatedFilter.id, count = updatedFilter.ruleCount, timestamp = System.currentTimeMillis())
+                    filterListDao.updateStats(
+                        id = updatedFilter.id,
+                        count = updatedFilter.ruleCount,
+                        timestamp = System.currentTimeMillis()
+                    )
                     loadAllEnabledFilters()
                     Result.success(updatedFilter.ruleCount)
                 } else {
@@ -693,7 +716,11 @@ class FilterListRepository(
             } else {
                 val result = downloadManager.downloadFilterList(filter, forceUpdate = true)
                 if (result.isSuccess) {
-                    filterListDao.updateStats(id = filter.id, count = filter.ruleCount, timestamp = System.currentTimeMillis())
+                    filterListDao.updateStats(
+                        id = filter.id,
+                        count = filter.ruleCount,
+                        timestamp = System.currentTimeMillis()
+                    )
                     loadAllEnabledFilters()
                     Result.success(filter.ruleCount)
                 } else {
@@ -706,38 +733,40 @@ class FilterListRepository(
         }
     }
 
-    suspend fun findBlockingFilterLists(targetDomain: String): List<String> = withContext(Dispatchers.IO) {
-        val enabledLists = filterListDao.getEnabled()
-        if (enabledLists.isEmpty()) return@withContext emptyList()
+    suspend fun findBlockingFilterLists(targetDomain: String): List<String> =
+        withContext(Dispatchers.IO) {
+            val enabledLists = filterListDao.getEnabled()
+            if (enabledLists.isEmpty()) return@withContext emptyList()
 
-        val matchedListNames = mutableListOf<String>()
-        for (filter in enabledLists) {
-            val trieFile = File(context.filesDir, "remote_filters/${filter.id}.trie")
-            if (!trieFile.exists() || trieFile.length() == 0L) continue
-            try {
-                if (tunnel.Tunnel.checkDomainInTrieFile(trieFile.absolutePath, targetDomain)) {
-                    matchedListNames.add(filter.name)
+            val matchedListNames = mutableListOf<String>()
+            for (filter in enabledLists) {
+                val trieFile = File(context.filesDir, "remote_filters/${filter.id}.trie")
+                if (!trieFile.exists() || trieFile.length() == 0L) continue
+                try {
+                    if (tunnel.Tunnel.checkDomainInTrieFile(trieFile.absolutePath, targetDomain)) {
+                        matchedListNames.add(filter.name)
+                    }
+                } catch (e: Exception) {
+                    Timber.e(e, "Error scanning trie for ${filter.name}")
                 }
-            } catch (e: Exception) {
-                Timber.e(e, "Error scanning trie for ${filter.name}")
             }
+            return@withContext matchedListNames
         }
-        return@withContext matchedListNames
-    }
 
     suspend fun getDomainPreview(filter: FilterList, limit: Int = 100): List<String> = emptyList()
 
-    suspend fun checkDomainInFilter(filterId: Long, domain: String): Boolean = withContext(Dispatchers.IO) {
-        val trieFile = File(context.filesDir, "remote_filters/$filterId.trie")
-        if (!trieFile.exists() || trieFile.length() == 0L) return@withContext false
-        
-        return@withContext try {
-            tunnel.Tunnel.checkDomainInTrieFile(trieFile.absolutePath, domain)
-        } catch (e: Exception) {
-            Timber.e(e, "Error scanning trie for $filterId regarding $domain")
-            false
+    suspend fun checkDomainInFilter(filterId: Long, domain: String): Boolean =
+        withContext(Dispatchers.IO) {
+            val trieFile = File(context.filesDir, "remote_filters/$filterId.trie")
+            if (!trieFile.exists() || trieFile.length() == 0L) return@withContext false
+
+            return@withContext try {
+                tunnel.Tunnel.checkDomainInTrieFile(trieFile.absolutePath, domain)
+            } catch (e: Exception) {
+                Timber.e(e, "Error scanning trie for $filterId regarding $domain")
+                false
+            }
         }
-    }
 
     suspend fun validateFilterUrl(url: String): Result<Boolean> = Result.success(true)
 }

@@ -390,15 +390,17 @@ fun FilterSetupScreen(
         }
 
         // Add filter dialog
-        val isValidatingUrl by viewModel.isValidatingUrl.collectAsStateWithLifecycle()
+        val isAddingCustomFilter by viewModel.isAddingCustomFilter.collectAsStateWithLifecycle()
         if (showAddDialog) {
             AddFilterDialog(
-                onDismiss = { if (!isValidatingUrl) showAddDialog = false },
+                onDismiss = { if (!isAddingCustomFilter) showAddDialog = false },
                 onAdd = { name, url ->
-                    viewModel.addFilterList(name, url)
+                    if (!isAddingCustomFilter) {
+                        viewModel.addFilterList(name, url)
+                    }
                 },
                 existingUrls = filterLists.map { it.url },
-                isValidating = isValidatingUrl
+                isValidating = isAddingCustomFilter
             )
         }
     }

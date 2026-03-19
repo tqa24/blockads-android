@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import app.pwhs.blockads.R
 import app.pwhs.blockads.data.entities.FilterList
 import app.pwhs.blockads.data.dao.FilterListDao
+import app.pwhs.blockads.data.repository.CustomFilterManager
 import app.pwhs.blockads.data.repository.FilterListRepository
 import app.pwhs.blockads.service.AdBlockVpnService
 import app.pwhs.blockads.ui.event.UiEvent
@@ -24,6 +25,7 @@ import kotlinx.coroutines.launch
 class FilterSetupViewModel(
     private val filterRepo: FilterListRepository,
     private val filterListDao: FilterListDao,
+    private val customFilterManager: CustomFilterManager,
     private val application: Application,
 ) : ViewModel() {
 
@@ -46,8 +48,8 @@ class FilterSetupViewModel(
     private val _isUpdatingFilter = MutableStateFlow(false)
     val isUpdatingFilter: StateFlow<Boolean> = _isUpdatingFilter.asStateFlow()
 
-    private val _isValidatingUrl = MutableStateFlow(false)
-    val isValidatingUrl: StateFlow<Boolean> = _isValidatingUrl.asStateFlow()
+    private val _isAddingCustomFilter = MutableStateFlow(false)
+    val isAddingCustomFilter: StateFlow<Boolean> = _isAddingCustomFilter.asStateFlow()
 
     private val _filterAddedEvent = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val filterAddedEvent: SharedFlow<Unit> = _filterAddedEvent.asSharedFlow()
@@ -83,32 +85,34 @@ class FilterSetupViewModel(
                 return@launch
             }
 
-            // Validate URL content is a valid filter list
-            _isValidatingUrl.value = true
-            val validation = filterRepo.validateFilterUrl(trimmedUrl)
-            _isValidatingUrl.value = false
+            // Use backend compiler API to build optimized binary files
+            _isAddingCustomFilter.value = true
+            val result = customFilterManager.addCustomFilter(trimmedUrl)
+            _isAddingCustomFilter.value = false
 
-            if (validation.isFailure) {
-                _events.toast(R.string.filter_error_invalid_content)
-                return@launch
-            }
+            result.fold(
+                onSuccess = { filter ->
+                    _events.toast(R.string.settings_add, listOf(": $name"))
+                    _filterAddedEvent.tryEmit(Unit)
 
-            filterListDao.insert(
-                FilterList(name = name, url = trimmedUrl, isEnabled = true, isBuiltIn = false)
+                    // Reload all filters so the new custom filter is active
+                    filterRepo.loadAllEnabledFilters()
+                    AdBlockVpnService.requestRestart(application.applicationContext)
+                },
+                onFailure = { error ->
+                    _events.toast(R.string.filter_update_failed)
+                }
             )
-            _events.toast(R.string.settings_add, listOf(": $name"))
-            _filterAddedEvent.tryEmit(Unit)
-
-            // Immediately load/update all filters to fetch content from the new URL
-            filterRepo.loadAllEnabledFilters()
-            AdBlockVpnService.requestRestart(application.applicationContext)
         }
     }
 
     fun deleteFilterList(filter: FilterList) {
         if (filter.isBuiltIn) return
         viewModelScope.launch {
-            filterListDao.delete(filter)
+            // Deletes the DB entity AND the local binary files (.trie, .bloom, .css)
+            customFilterManager.deleteCustomFilter(filter)
+            // Reload the filter engine without this filter
+            filterRepo.loadAllEnabledFilters()
             AdBlockVpnService.requestRestart(application.applicationContext)
         }
     }
@@ -116,7 +120,22 @@ class FilterSetupViewModel(
     fun updateAllFilters() {
         viewModelScope.launch {
             _isUpdatingFilter.value = true
+            
+            // 1. Update remote built-in filters
             val result = filterRepo.loadAllEnabledFilters()
+
+            // 2. Update all enabled custom filters
+            val customFilters = filterListDao.getAllNonBuiltIn()
+            for (filter in customFilters) {
+                if (filter.isEnabled) {
+                    // Recompile via backend, download new binaries, and update rule count
+                    customFilterManager.updateCustomFilter(filter)
+                }
+            }
+
+            // Always reload engine in case any custom filters updated their binaries
+            filterRepo.loadAllEnabledFilters()
+            
             _isUpdatingFilter.value = false
 
             result.fold(

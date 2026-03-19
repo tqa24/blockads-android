@@ -65,6 +65,11 @@ class FilterDownloadManager(
      * Uses a temporary file during download to prevent partial corruption.
      */
     private suspend fun downloadFile(url: String, destFile: File, forceUpdate: Boolean): String? {
+        // Custom filters use "local://" sentinel URLs — files are already on disk
+        if (url.startsWith("local://")) {
+            return if (destFile.exists() && destFile.length() > 0) destFile.absolutePath else null
+        }
+
         if (!forceUpdate && destFile.exists() && destFile.length() > 0) {
             Timber.d("File already exists: ${destFile.name}")
             return destFile.absolutePath

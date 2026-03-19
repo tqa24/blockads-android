@@ -81,8 +81,10 @@ type Engine struct {
 	firewallChecker FirewallChecker
 	appResolver     AppResolver
 
-	adTries  []*MmapTrie
-	secTries []*MmapTrie
+	adTries   []*MmapTrie
+	adTrieIDs []string
+	secTries  []*MmapTrie
+	secTrieIDs []string
 
 	// Bloom filters for fast pre-filtering (skip trie if definitely clean)
 	adBlooms  []*BloomFilter
@@ -152,6 +154,7 @@ func (e *Engine) SetTries(adTriePathsCsv, secTriePathsCsv, adBloomPathsCsv, secB
 		}
 	}
 	e.adTries = nil
+	e.adTrieIDs = nil
 
 	for _, t := range e.secTries {
 		if t != nil {
@@ -159,6 +162,7 @@ func (e *Engine) SetTries(adTriePathsCsv, secTriePathsCsv, adBloomPathsCsv, secB
 		}
 	}
 	e.secTries = nil
+	e.secTrieIDs = nil
 
 	// Close old bloom filters
 	for _, bf := range e.adBlooms {
@@ -184,6 +188,8 @@ func (e *Engine) SetTries(adTriePathsCsv, secTriePathsCsv, adBloomPathsCsv, secB
 			logf("Failed to load Ad Trie from %s: %v", path, err)
 		} else {
 			e.adTries = append(e.adTries, t)
+			id := strings.TrimSuffix(filepath.Base(path), ".trie")
+			e.adTrieIDs = append(e.adTrieIDs, id)
 			logf("Loaded Ad Trie from Go native Mmap: %s", path)
 		}
 	}
@@ -197,6 +203,8 @@ func (e *Engine) SetTries(adTriePathsCsv, secTriePathsCsv, adBloomPathsCsv, secB
 			logf("Failed to load Security Trie from %s: %v", path, err)
 		} else {
 			e.secTries = append(e.secTries, t)
+			id := strings.TrimSuffix(filepath.Base(path), ".trie")
+			e.secTrieIDs = append(e.secTrieIDs, id)
 			logf("Loaded Security Trie from Go native Mmap: %s", path)
 		}
 	}
@@ -408,6 +416,7 @@ func (e *Engine) Stop() {
 		}
 	}
 	e.adTries = nil
+	e.adTrieIDs = nil
 
 	for _, t := range e.secTries {
 		if t != nil {
@@ -415,6 +424,7 @@ func (e *Engine) Stop() {
 		}
 	}
 	e.secTries = nil
+	e.secTrieIDs = nil
 
 	for _, bf := range e.adBlooms {
 		if bf != nil {
@@ -739,7 +749,11 @@ func (e *Engine) handleDNSQuery(queryInfo *DNSQueryInfo) {
 		}
 		if secBloom == nil || secBloom.MightContainDomainOrParent(domain) {
 			if secTrie.ContainsOrParent(domain) {
-				e.handleBlockedDomain(queryInfo, "security", appName, startTime)
+				reason := "security"
+				if i < len(e.secTrieIDs) {
+					reason = e.secTrieIDs[i]
+				}
+				e.handleBlockedDomain(queryInfo, reason, appName, startTime)
 				return
 			}
 		}
@@ -754,7 +768,11 @@ func (e *Engine) handleDNSQuery(queryInfo *DNSQueryInfo) {
 		}
 		if adBloom == nil || adBloom.MightContainDomainOrParent(domain) {
 			if adTrie.ContainsOrParent(domain) {
-				e.handleBlockedDomain(queryInfo, "filter_list", appName, startTime)
+				reason := "filter_list"
+				if i < len(e.adTrieIDs) {
+					reason = e.adTrieIDs[i]
+				}
+				e.handleBlockedDomain(queryInfo, reason, appName, startTime)
 				return
 			}
 		}

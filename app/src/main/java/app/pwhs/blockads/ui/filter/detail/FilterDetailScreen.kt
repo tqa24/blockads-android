@@ -19,9 +19,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Block
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -74,8 +77,10 @@ fun FilterDetailScreen(
     onNavigateBack: () -> Unit = { }
 ) {
     val filter by viewModel.filter.collectAsStateWithLifecycle()
-    val domainPreview by viewModel.domainPreview.collectAsStateWithLifecycle()
-    val isLoadingDomains by viewModel.isLoadingDomains.collectAsStateWithLifecycle()
+    val blockedCount by viewModel.blockedCount.collectAsStateWithLifecycle()
+    val testDomainQuery by viewModel.testDomainQuery.collectAsStateWithLifecycle()
+    val testDomainResult by viewModel.testDomainResult.collectAsStateWithLifecycle()
+    val isTestingDomain by viewModel.isTestingDomain.collectAsStateWithLifecycle()
     val isUpdating by viewModel.isUpdating.collectAsStateWithLifecycle()
 
     val clipboardManager = LocalClipboard.current
@@ -328,86 +333,97 @@ fun FilterDetailScreen(
                 }
             }
 
-            // Domain preview section
+            // Filter Statistics section
             item {
                 Text(
-                    stringResource(R.string.filter_detail_domain_preview),
+                    "Filter Statistics",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
             }
-
-            if (isLoadingDomains) {
-                item {
-                    Box(
+            item {
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(100.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(32.dp),
-                            strokeWidth = 2.dp
-                        )
-                    }
-                }
-            } else if (domainPreview.isEmpty()) {
-                item {
-                    Card(
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surface
-                        ),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.fillMaxWidth()
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Text(
-                            stringResource(R.string.filter_detail_no_domains),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = TextSecondary,
-                            modifier = Modifier.padding(16.dp)
+                            text = "Blocked Requests",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = TextSecondary
+                        )
+                        Text(
+                            text = formatCount(blockedCount),
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
                         )
                     }
                 }
-            } else {
-                item {
-                    Card(
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surface
-                        ),
-                        shape = RoundedCornerShape(12.dp),
+            }
+
+            // Test a Domain section
+            item {
+                Text(
+                    "Test a Domain",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            item {
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .animateContentSize()
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        Column {
-                            domainPreview.forEachIndexed { index, domain ->
-                                Text(
-                                    text = domain,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                                if (index < domainPreview.lastIndex) {
-                                    HorizontalDivider(
-                                        modifier = Modifier.padding(horizontal = 16.dp),
-                                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.06f)
+                        androidx.compose.material3.OutlinedTextField(
+                            value = testDomainQuery,
+                            onValueChange = { viewModel.setTestDomainQuery(it) },
+                            placeholder = { Text("e.g. ads.google.com") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            trailingIcon = {
+                                if (isTestingDomain) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(24.dp),
+                                        strokeWidth = 2.dp
                                     )
+                                } else {
+                                    IconButton(onClick = { viewModel.testDomain() }) {
+                                        Icon(Icons.Default.Search, contentDescription = "Test")
+                                    }
                                 }
                             }
-                            if (f.domainCount > domainPreview.size) {
+                        )
+                        
+                        testDomainResult?.let { isBlocked ->
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = if (isBlocked) Icons.Default.Block else Icons.Default.CheckCircle,
+                                    contentDescription = null,
+                                    tint = if (isBlocked) DangerRed else Color(0xFF4CAF50)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = stringResource(
-                                        R.string.filter_detail_more_domains,
-                                        formatCount(f.domainCount - domainPreview.size)
-                                    ),
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = TextSecondary,
-                                    modifier = Modifier.padding(16.dp)
+                                    text = if (isBlocked) "Domain is BLOCKED by this filter" else "Domain is ALLOWED by this filter",
+                                    color = if (isBlocked) DangerRed else Color(0xFF4CAF50),
+                                    fontWeight = FontWeight.Bold
                                 )
                             }
                         }

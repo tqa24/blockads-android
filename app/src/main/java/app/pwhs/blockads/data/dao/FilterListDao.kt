@@ -50,4 +50,10 @@ interface FilterListDao {
 
     @Query("SELECT * FROM filter_lists WHERE id = :id")
     fun getByIdFlow(id: Long): Flow<FilterList?>
+
+    @Query("SELECT * FROM filter_lists WHERE originalUrl = :url LIMIT 1")
+    suspend fun getByOriginalUrl(url: String): FilterList?
+
+    @Query("SELECT * FROM filter_lists WHERE isBuiltIn = 0")
+    suspend fun getAllNonBuiltIn(): List<FilterList>
 }

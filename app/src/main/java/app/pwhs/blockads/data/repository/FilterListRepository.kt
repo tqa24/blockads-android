@@ -673,5 +673,17 @@ class FilterListRepository(
 
     suspend fun getDomainPreview(filter: FilterList, limit: Int = 100): List<String> = emptyList()
 
+    suspend fun checkDomainInFilter(filterId: Long, domain: String): Boolean = withContext(Dispatchers.IO) {
+        val trieFile = File(context.filesDir, "remote_filters/$filterId.trie")
+        if (!trieFile.exists() || trieFile.length() == 0L) return@withContext false
+        
+        return@withContext try {
+            tunnel.Tunnel.checkDomainInTrieFile(trieFile.absolutePath, domain)
+        } catch (e: Exception) {
+            Timber.e(e, "Error scanning trie for $filterId regarding $domain")
+            false
+        }
+    }
+
     suspend fun validateFilterUrl(url: String): Result<Boolean> = Result.success(true)
 }

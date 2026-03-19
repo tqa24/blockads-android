@@ -32,8 +32,6 @@ import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
@@ -65,6 +63,7 @@ import app.pwhs.blockads.ui.event.UiEventEffect
 import app.pwhs.blockads.ui.logs.component.DomainDetailBottomSheet
 import app.pwhs.blockads.ui.logs.component.LogEntryItem
 import app.pwhs.blockads.ui.logs.data.TimeRange
+import app.pwhs.blockads.ui.logs.dialog.ConfirmClearLogDialog
 import app.pwhs.blockads.ui.theme.DangerRed
 import app.pwhs.blockads.ui.theme.TextSecondary
 import app.pwhs.blockads.ui.theme.WhitelistAmber
@@ -398,27 +397,12 @@ fun LogsScreen(
     }
 
     if (showClearConfirm) {
-        AlertDialog(
-            containerColor = MaterialTheme.colorScheme.background,
-            onDismissRequest = { showClearConfirm = false },
-            title = { Text(stringResource(R.string.settings_clear_logs)) },
-            text = { Text(stringResource(R.string.clear_logs_confirm_message)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    viewModel.clearLogs()
-                    showClearConfirm = false
-                }) {
-                    Text(
-                        stringResource(R.string.settings_clear_logs),
-                        color = DangerRed
-                    )
-                }
+        ConfirmClearLogDialog(
+            onClear = {
+                viewModel.clearLogs()
+                showClearConfirm = false
             },
-            dismissButton = {
-                TextButton(onClick = { showClearConfirm = false }) {
-                    Text(stringResource(R.string.cancel))
-                }
-            }
+            onDismiss = { showClearConfirm = false }
         )
     }
 

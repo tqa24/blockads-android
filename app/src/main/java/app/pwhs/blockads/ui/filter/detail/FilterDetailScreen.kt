@@ -39,6 +39,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -76,7 +77,11 @@ import org.koin.core.parameter.parametersOf
 fun FilterDetailScreen(
     filterId: Long,
     modifier: Modifier = Modifier,
-    viewModel: FilterDetailViewModel = koinViewModel(key = filterId.toString()) { parametersOf(filterId) },
+    viewModel: FilterDetailViewModel = koinViewModel(key = filterId.toString()) {
+        parametersOf(
+            filterId
+        )
+    },
     onNavigateBack: () -> Unit = { }
 ) {
     val filter by viewModel.filter.collectAsStateWithLifecycle()
@@ -85,7 +90,7 @@ fun FilterDetailScreen(
     val testDomainResult by viewModel.testDomainResult.collectAsStateWithLifecycle()
     val isTestingDomain by viewModel.isTestingDomain.collectAsStateWithLifecycle()
     val isUpdating by viewModel.isUpdating.collectAsStateWithLifecycle()
-    
+
     val showEditDialog by viewModel.showEditDialog.collectAsStateWithLifecycle()
     val editName by viewModel.editName.collectAsStateWithLifecycle()
     val editUrl by viewModel.editUrl.collectAsStateWithLifecycle()
@@ -411,7 +416,7 @@ fun FilterDetailScreen(
                             .padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        androidx.compose.material3.OutlinedTextField(
+                        OutlinedTextField(
                             value = testDomainQuery,
                             onValueChange = { viewModel.setTestDomainQuery(it) },
                             placeholder = { Text("e.g. ads.google.com") },
@@ -430,7 +435,7 @@ fun FilterDetailScreen(
                                 }
                             }
                         )
-                        
+
                         testDomainResult?.let { isBlocked ->
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(
@@ -464,14 +469,14 @@ fun FilterDetailScreen(
             title = { Text(stringResource(R.string.edit_custom_filter)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    androidx.compose.material3.OutlinedTextField(
+                    OutlinedTextField(
                         value = editName,
                         onValueChange = { viewModel.setEditName(it) },
                         label = { Text(stringResource(R.string.filter_name)) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
-                    androidx.compose.material3.OutlinedTextField(
+                    OutlinedTextField(
                         value = editUrl,
                         onValueChange = { viewModel.setEditUrl(it) },
                         label = { Text(stringResource(R.string.filter_url_domain)) },

@@ -93,7 +93,7 @@ class FilterSetupViewModel(
             _isAddingCustomFilter.value = false
 
             result.fold(
-                onSuccess = { filter ->
+                onSuccess = { _ ->
                     _events.toast(R.string.settings_add, listOf(": $name"))
                     _filterAddedEvent.tryEmit(Unit)
 
@@ -101,7 +101,7 @@ class FilterSetupViewModel(
                     filterRepo.loadAllEnabledFilters()
                     AdBlockVpnService.requestRestart(application.applicationContext)
                 },
-                onFailure = { error ->
+                onFailure = { _ ->
                     _events.toast(R.string.filter_update_failed)
                 }
             )

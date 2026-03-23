@@ -495,12 +495,12 @@ class AdBlockVpnService : VpnService() {
 
         return try {
             // Check routing mode to decide VPN configuration
-            val routingMode = kotlinx.coroutines.runBlocking {
+            val routingMode = runBlocking {
                 appPrefs.getRoutingModeSnapshot()
             }
             val wgConfig: WireGuardConfig? =
                 if (routingMode == AppPreferences.ROUTING_MODE_WIREGUARD) {
-                    val json = kotlinx.coroutines.runBlocking { appPrefs.getWgConfigJsonSnapshot() }
+                    val json = runBlocking { appPrefs.getWgConfigJsonSnapshot() }
                     json?.let {
                         try {
                             WireGuardConfig.fromJson(it)
@@ -570,6 +570,13 @@ class AdBlockVpnService : VpnService() {
                 }
             }
 
+            // Exclude our own app from VPN to avoid loops
+            try {
+                builder.addDisallowedApplication(packageName)
+            } catch (e: Exception) {
+                Timber.w(e, "Could not exclude self from VPN")
+            }
+
             // Exclude whitelisted apps from VPN
             for (appPackage in whitelistedApps) {
                 try {
@@ -578,6 +585,14 @@ class AdBlockVpnService : VpnService() {
                 } catch (e: Exception) {
                     Timber.w(e, "Could not exclude $appPackage from VPN")
                 }
+            }
+
+            if (wgConfig == null) {
+                builder.allowBypass()
+            }
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                builder.setUnderlyingNetworks(null)
             }
 
             vpnInterface = builder.establish()

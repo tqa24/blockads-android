@@ -570,13 +570,6 @@ class AdBlockVpnService : VpnService() {
                 }
             }
 
-            // Exclude our own app from VPN to avoid loops
-            try {
-                builder.addDisallowedApplication(packageName)
-            } catch (e: Exception) {
-                Timber.w(e, "Could not exclude self from VPN")
-            }
-
             // Exclude whitelisted apps from VPN
             for (appPackage in whitelistedApps) {
                 try {

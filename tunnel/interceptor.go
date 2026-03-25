@@ -58,6 +58,8 @@ func (i *DnsInterceptor) Run(tunFile *os.File) {
 	// Also give the router access to TUN for writing responses
 	i.router.SetTunFile(tunFile)
 
+	voWiFiProxy := NewVoWiFiProxy(i.engine, tunFile)
+
 	logf("DnsInterceptor: started, reading from TUN")
 
 	buf := make([]byte, 32767) // MAX_PACKET_SIZE
@@ -78,9 +80,10 @@ func (i *DnsInterceptor) Run(tunFile *os.File) {
 		// by Wi-Fi Calling (VoWiFi) for carrier IPSec tunnels.
 		// Writing the packet back to TUN lets it re-enter the
 		// Android IP stack and route via the physical interface,
-		// bypassing the VPN tunnel entirely.
+		// Using a Go-based NAT proxy, we send the packets over the physical
+		// interface safely and write the carrier's responses back into TUN.
 		if isVoWiFiPacket(buf, n) {
-			tunFile.Write(buf[:n])
+			voWiFiProxy.Route(buf[:n], n)
 			continue
 		}
 

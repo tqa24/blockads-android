@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -42,11 +43,15 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -54,6 +59,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.pwhs.blockads.R
 import app.pwhs.blockads.data.datastore.AppPreferences
 import app.pwhs.blockads.ui.appearance.component.AccentColorCircle
+import app.pwhs.blockads.ui.appearance.component.ColorPickerDialog
 import app.pwhs.blockads.ui.settings.component.SectionHeader
 import app.pwhs.blockads.ui.theme.AccentBluePreset
 import app.pwhs.blockads.ui.theme.AccentGreen
@@ -63,6 +69,7 @@ import app.pwhs.blockads.ui.theme.AccentPink
 import app.pwhs.blockads.ui.theme.AccentPurple
 import app.pwhs.blockads.ui.theme.AccentTeal
 import org.koin.androidx.compose.koinViewModel
+import androidx.core.graphics.toColorInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -75,6 +82,8 @@ fun AppearanceScreen(
     val appLanguage by viewModel.appLanguage.collectAsStateWithLifecycle()
     val accentColor by viewModel.accentColor.collectAsStateWithLifecycle()
     val showBottomNavLabels by viewModel.showBottomNavLabels.collectAsStateWithLifecycle()
+
+    var showColorPicker by remember { mutableStateOf(false) }
 
     Scaffold(
         modifier = modifier,
@@ -210,9 +219,67 @@ fun AppearanceScreen(
                     )
 
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally)
                     ) {
+                        // Custom color circle
+                        val isCustom = accentColor.startsWith("custom_#")
+                        val customDisplayColor = if (isCustom) {
+                            try {
+                                Color(accentColor.removePrefix("custom_").toColorInt())
+                            } catch (_: Exception) {
+                                MaterialTheme.colorScheme.primary
+                            }
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    Brush.sweepGradient(
+                                        listOf(
+                                            Color(0xFFFF6B6B),
+                                            Color(0xFFFFA500),
+                                            Color(0xFFFFD700),
+                                            Color(0xFF39D353),
+                                            Color(0xFF4285F4),
+                                            Color(0xFFA855F7),
+                                            Color(0xFFFF6B6B),
+                                        )
+                                    )
+                                )
+                                .then(
+                                    if (isCustom) Modifier.border(
+                                        3.dp,
+                                        MaterialTheme.colorScheme.primary,
+                                        CircleShape
+                                    ) else Modifier
+                                )
+                                .clickable { showColorPicker = true },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (isCustom) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(20.dp)
+                                        .clip(CircleShape)
+                                        .background(customDisplayColor),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        Icons.Default.Check,
+                                        contentDescription = null,
+                                        tint = Color.White,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                }
+                            }
+                        }
                         presetColors.forEach { (colorKey, displayColor) ->
                             AccentColorCircle(
                                 color = displayColor,
@@ -495,5 +562,25 @@ fun AppearanceScreen(
             Spacer(modifier = Modifier.height(200.dp))
         }
     }
-}
 
+    if (showColorPicker) {
+        val initialCustomColor = if (accentColor.startsWith("custom_#")) {
+            try {
+                Color(accentColor.removePrefix("custom_").toColorInt())
+            } catch (_: Exception) {
+                Color.Red
+            }
+        } else {
+            Color.Red
+        }
+        ColorPickerDialog(
+            initialColor = initialCustomColor,
+            onDismiss = { showColorPicker = false },
+            onColorSelected = { color ->
+                val hex = String.format("#%06X", 0xFFFFFF and color.toArgb())
+                viewModel.setAccentColor("custom_$hex")
+                showColorPicker = false
+            }
+        )
+    }
+}

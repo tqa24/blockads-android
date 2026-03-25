@@ -3,7 +3,13 @@ package app.pwhs.blockads.ui.settings
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -93,6 +99,8 @@ fun SettingsScreen(
     onNavigateToDNSProvider: () -> Unit = { },
 ) {
     val autoReconnect by viewModel.autoReconnect.collectAsStateWithLifecycle()
+    val networkSwitchDelayEnabled by viewModel.networkSwitchDelayEnabled.collectAsStateWithLifecycle()
+    val networkSwitchDelaySec by viewModel.networkSwitchDelaySec.collectAsStateWithLifecycle()
     val filterLists by viewModel.filterLists.collectAsStateWithLifecycle()
 
     // Auto-update Filter Lists
@@ -162,6 +170,60 @@ fun SettingsScreen(
                     isChecked = autoReconnect,
                     onCheckedChange = { viewModel.setAutoReconnect(it) }
                 )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Network Switch Delay
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Column {
+                    SettingsToggleItem(
+                        icon = Icons.Default.PhoneAndroid,
+                        title = stringResource(R.string.settings_network_switch_delay),
+                        subtitle = stringResource(R.string.settings_network_switch_delay_desc),
+                        isChecked = networkSwitchDelayEnabled,
+                        onCheckedChange = { viewModel.setNetworkSwitchDelayEnabled(it) }
+                    )
+                    AnimatedVisibility(
+                        visible = networkSwitchDelayEnabled,
+                        enter = expandVertically() + fadeIn(),
+                        exit = shrinkVertically() + fadeOut()
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(
+                                start = 56.dp,
+                                end = 16.dp,
+                                bottom = 12.dp
+                            )
+                        ) {
+                            Text(
+                                stringResource(
+                                    R.string.settings_network_switch_delay_value,
+                                    networkSwitchDelaySec
+                                ),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier.horizontalScroll(rememberScrollState())
+                            ) {
+                                listOf(5, 10, 30, 60, 120).forEach { sec ->
+                                    androidx.compose.material3.FilterChip(
+                                        selected = networkSwitchDelaySec == sec,
+                                        onClick = { viewModel.setNetworkSwitchDelaySec(sec) },
+                                        label = { Text("${sec}s") }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(12.dp))

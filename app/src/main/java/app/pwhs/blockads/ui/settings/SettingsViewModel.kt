@@ -102,6 +102,12 @@ class SettingsViewModel(
             AppPreferences.DEFAULT_UPSTREAM_DNS
         )
 
+    val networkSwitchDelayEnabled: StateFlow<Boolean> = appPrefs.networkSwitchDelayEnabled
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    val networkSwitchDelaySec: StateFlow<Int> = appPrefs.networkSwitchDelaySec
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 30)
+
     private val _events = MutableSharedFlow<UiEvent>(extraBufferCapacity = 1)
     val events: SharedFlow<UiEvent> = _events.asSharedFlow()
 
@@ -113,6 +119,14 @@ class SettingsViewModel(
 
     fun setAutoReconnect(enabled: Boolean) {
         viewModelScope.launch { appPrefs.setAutoReconnect(enabled) }
+    }
+
+    fun setNetworkSwitchDelayEnabled(enabled: Boolean) {
+        viewModelScope.launch { appPrefs.setNetworkSwitchDelayEnabled(enabled) }
+    }
+
+    fun setNetworkSwitchDelaySec(seconds: Int) {
+        viewModelScope.launch { appPrefs.setNetworkSwitchDelaySec(seconds) }
     }
 
     fun setAutoUpdateEnabled(enabled: Boolean) {

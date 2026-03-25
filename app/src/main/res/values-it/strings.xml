@@ -523,6 +523,10 @@
     <string name="vpn_phase_loading_filters">Loading filter lists…</string>
     <string name="vpn_phase_preparing_dns">Preparing DNS…</string>
     <string name="vpn_phase_establishing">Establishing VPN tunnel…</string>
+    <string name="vpn_network_switch_waiting">In attesa che la rete si stabilizzi… %1$ds</string>
+    <string name="settings_network_switch_delay">Ritardo cambio di rete</string>
+    <string name="settings_network_switch_delay_desc">Metti in pausa la riconnessione VPN dopo i cambi di rete (utile per le chiamate Wi-Fi)</string>
+    <string name="settings_network_switch_delay_value">Ritardo: %1$d secondi</string>
 
     <string name="filter_chip_all">Tutti</string>
     <string name="filter_chip_enabled">Attivati</string>

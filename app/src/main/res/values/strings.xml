@@ -654,4 +654,8 @@
     <string name="enable_all_user_apps">Enable All User Apps</string>
     <string name="disable_all_system_apps">Disable All System Apps</string>
     <string name="enable_all_system_apps">Enable All System Apps</string>
+    <string name="vpn_network_switch_waiting">Waiting for network to stabilize… %1$ds</string>
+    <string name="settings_network_switch_delay">Network Switch Delay</string>
+    <string name="settings_network_switch_delay_desc">Pause VPN reconnect after network changes (useful for Wi-Fi Calling)</string>
+    <string name="settings_network_switch_delay_value">Delay: %1$d seconds</string>
 </resources>

@@ -564,4 +564,8 @@
     <string name="enable_all_user_apps">모든 사용자 앱 활성화</string>
     <string name="disable_all_system_apps">모든 시스템 앱 비활성화</string>
     <string name="enable_all_system_apps">모든 시스템 앱 활성화</string>
+    <string name="vpn_network_switch_waiting">네트워크가 안정될 때까지 대기 중… %1$d초</string>
+    <string name="settings_network_switch_delay">네트워크 전환 지연</string>
+    <string name="settings_network_switch_delay_desc">네트워크 변경 후 VPN 재연결 일시 중지 (Wi-Fi 통화에 유용함)</string>
+    <string name="settings_network_switch_delay_value">지연: %1$d초</string>
 </resources>

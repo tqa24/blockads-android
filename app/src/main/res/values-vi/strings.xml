@@ -614,4 +614,8 @@
     <string name="enable_all_user_apps">Bật tất cả ứng dụng người dùng</string>
     <string name="disable_all_system_apps">Tắt tất cả ứng dụng hệ thống</string>
     <string name="enable_all_system_apps">Bật tất cả ứng dụng hệ thống</string>
+    <string name="vpn_network_switch_waiting">Đang chờ mạng ổn định… %1$ds</string>
+    <string name="settings_network_switch_delay">Độ trễ khi chuyển mạng</string>
+    <string name="settings_network_switch_delay_desc">Tạm dừng kết nối lại VPN sau khi chuyển mạng (hữu ích cho Gọi qua Wi-Fi)</string>
+    <string name="settings_network_switch_delay_value">Độ trễ: %1$d giây</string>
 </resources>

@@ -587,4 +587,8 @@
     <string name="enable_all_user_apps">Увімкнути всі користувацькі програми</string>
     <string name="disable_all_system_apps">Вимкнути всі системні програми</string>
     <string name="enable_all_system_apps">Увімкнути всі системні програми</string>
+    <string name="vpn_network_switch_waiting">Очікування стабілізації мережі… %1$ds</string>
+    <string name="settings_network_switch_delay">Затримка зміни мережі</string>
+    <string name="settings_network_switch_delay_desc">Призупинити перепідключення VPN після зміни мережі (корисно для викликів через Wi-Fi)</string>
+    <string name="settings_network_switch_delay_value">Затримка: %1$d сек.</string>
 </resources>

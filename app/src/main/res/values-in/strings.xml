@@ -593,4 +593,8 @@
     <string name="enable_all_user_apps">Aktifkan Semua Aplikasi Pengguna</string>
     <string name="disable_all_system_apps">Nonaktifkan Semua Aplikasi Sistem</string>
     <string name="enable_all_system_apps">Aktifkan Semua Aplikasi Sistem</string>
+    <string name="vpn_network_switch_waiting">Menunggu jaringan stabil… %1$ds</string>
+    <string name="settings_network_switch_delay">Penundaan Peralihan Jaringan</string>
+    <string name="settings_network_switch_delay_desc">Jeda penyambungan ulang VPN setelah perubahan jaringan (berguna untuk Panggilan Wi-Fi)</string>
+    <string name="settings_network_switch_delay_value">Penundaan: %1$d detik</string>
 </resources>

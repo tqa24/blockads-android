@@ -586,4 +586,8 @@
     <string name="enable_all_user_apps">Ativar todos os apps do usuário</string>
     <string name="disable_all_system_apps">Desativar todos os apps do sistema</string>
     <string name="enable_all_system_apps">Ativar todos os apps do sistema</string>
+    <string name="vpn_network_switch_waiting">Aguardando a rede estabilizar… %1$ds</string>
+    <string name="settings_network_switch_delay">Atraso na troca de rede</string>
+    <string name="settings_network_switch_delay_desc">Pausar a reconexão da VPN após mudanças de rede (útil para chamadas Wi-Fi)</string>
+    <string name="settings_network_switch_delay_value">Atraso: %1$d segundos</string>
 </resources>

@@ -564,4 +564,8 @@
     <string name="enable_all_user_apps">启用所有用户应用</string>
     <string name="disable_all_system_apps">禁用所有系统应用</string>
     <string name="enable_all_system_apps">启用所有系统应用</string>
+    <string name="vpn_network_switch_waiting">正在等待网络稳定… %1$d秒</string>
+    <string name="settings_network_switch_delay">网络切换延迟</string>
+    <string name="settings_network_switch_delay_desc">网络更改后暂停重新连接 VPN（适用于 Wi-Fi 通话）</string>
+    <string name="settings_network_switch_delay_value">延迟：%1$d秒</string>
 </resources>

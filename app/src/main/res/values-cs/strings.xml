@@ -589,4 +589,8 @@
     <string name="enable_all_user_apps">Povolit všechny uživatelské aplikace</string>
     <string name="disable_all_system_apps">Zakázat všechny systémové aplikace</string>
     <string name="enable_all_system_apps">Povolit všechny systémové aplikace</string>
+    <string name="vpn_network_switch_waiting">Čekání na stabilizaci sítě… %1$ds</string>
+    <string name="settings_network_switch_delay">Zpoždění při změně sítě</string>
+    <string name="settings_network_switch_delay_desc">Pozastavit opětovné připojení VPN po změně sítě (užitečné pro Wi-Fi volání)</string>
+    <string name="settings_network_switch_delay_value">Zpoždění: %1$d sekund</string>
 </resources>

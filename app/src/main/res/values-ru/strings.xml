@@ -613,4 +613,8 @@
     <string name="enable_all_user_apps">Включить все пользовательские приложения</string>
     <string name="disable_all_system_apps">Отключить все системные приложения</string>
     <string name="enable_all_system_apps">Включить все системные приложения</string>
+    <string name="vpn_network_switch_waiting">Ожидание стабилизации сети… %1$ds</string>
+    <string name="settings_network_switch_delay">Задержка при смене сети</string>
+    <string name="settings_network_switch_delay_desc">Приостановить переподключение VPN после смены сети (полезно для вызовов по Wi-Fi)</string>
+    <string name="settings_network_switch_delay_value">Задержка: %1$d сек.</string>
 </resources>

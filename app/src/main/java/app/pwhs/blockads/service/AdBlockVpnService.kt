@@ -149,6 +149,7 @@ class AdBlockVpnService : VpnService() {
     private lateinit var appNameResolver: AppNameResolver
     private var batteryMonitoringJob: Job? = null
     private var notificationUpdateJob: Job? = null
+    private var networkSwitchJob: Job? = null
     private val networkAvailableFlow = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
 
     private var vpnStartTime: Long = 0L
@@ -935,6 +936,7 @@ class AdBlockVpnService : VpnService() {
         }
 
         val title = when {
+            isReconnecting && connectingPhase.isNotEmpty() -> getString(R.string.vpn_notification_reconnecting)
             isReconnecting -> getString(R.string.vpn_notification_reconnecting)
             retryManager.getRetryCount() > 0 -> getString(R.string.vpn_notification_retrying)
             isConnecting && connectingPhase.isNotEmpty() -> getString(R.string.status_connecting)
@@ -942,6 +944,7 @@ class AdBlockVpnService : VpnService() {
         }
 
         val text = when {
+            isReconnecting && connectingPhase.isNotEmpty() -> connectingPhase
             isReconnecting -> getString(R.string.vpn_notification_reconnecting_text)
             retryManager.getRetryCount() > 0 -> getString(
                 R.string.vpn_notification_retry_text,
@@ -991,18 +994,69 @@ class AdBlockVpnService : VpnService() {
         Timber.d("Network available - checking VPN status")
         networkAvailableFlow.tryEmit(Unit)
 
-        // Use serviceScope to avoid blocking the callback thread
-        serviceScope.launch {
+        // Cancel any pending network switch job (debounce rapid switches)
+        networkSwitchJob?.cancel()
+
+        networkSwitchJob = serviceScope.launch {
             val autoReconnect = appPrefs.autoReconnect.first()
             val vpnWasEnabled = appPrefs.vpnEnabled.first()
+            val delayEnabled = appPrefs.networkSwitchDelayEnabled.first()
+            val delaySec = appPrefs.networkSwitchDelaySec.first()
 
-            // If VPN should be running but isn't, try to reconnect
-            if (autoReconnect && vpnWasEnabled && !isRunning && !isConnecting && !isReconnecting) {
+            // Case 1: VPN is running and delay is enabled → restart with delay
+            if (delayEnabled && isRunning) {
+                Timber.d("Network changed while VPN running — pausing for ${delaySec}s")
+                _state.value = VpnState.RESTARTING
+                isReconnecting = true
+
+                // Tear down tunnel without killing the service (same as restartVpn)
+                networkMonitor?.stopMonitoring()
+                stopBatteryMonitoring()
+                stopNotificationUpdates()
+                goTunnelAdapter.stop()
+                try {
+                    vpnInterface?.close()
+                } catch (e: Exception) {
+                    Timber.e(e, "Error closing VPN interface during network switch")
+                }
+                vpnInterface = null
+
+                // Countdown with notification updates
+                for (remaining in delaySec downTo 1) {
+                    connectingPhase = getString(R.string.vpn_network_switch_waiting, remaining)
+                    updateNotification()
+                    delay(1000L)
+                }
+                connectingPhase = ""
+
+                // Restart VPN
+                retryManager.reset()
+                startVpn()
+                isReconnecting = false
+                return@launch
+            }
+
+            // Case 2: VPN is not running but should be → reconnect
+            if (autoReconnect && vpnWasEnabled && !isRunning && !isConnecting && !isRestarting) {
                 Timber.d("Auto-reconnecting VPN after network became available")
                 isReconnecting = true
 
-                // Wait a bit for network to stabilize
-                delay(NETWORK_STABILIZATION_DELAY_MS)
+                val delayMs = if (delayEnabled) {
+                    delaySec * 1000L
+                } else {
+                    NETWORK_STABILIZATION_DELAY_MS
+                }
+
+                if (delayEnabled) {
+                    for (remaining in delaySec downTo 1) {
+                        connectingPhase = getString(R.string.vpn_network_switch_waiting, remaining)
+                        updateNotification()
+                        delay(1000L)
+                    }
+                    connectingPhase = ""
+                } else {
+                    delay(delayMs)
+                }
 
                 if (!isRunning && !isConnecting) {
                     retryManager.reset()

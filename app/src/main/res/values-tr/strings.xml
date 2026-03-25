@@ -635,4 +635,8 @@ Desteklenen formatlar:
     <string name="enable_all_user_apps">Tüm Kullanıcı Uygulamalarını Etkinleştir</string>
     <string name="disable_all_system_apps">Tüm Sistem Uygulamalarını Devre Dışı Bırak</string>
     <string name="enable_all_system_apps">Tüm Sistem Uygulamalarını Etkinleştir</string>
+    <string name="vpn_network_switch_waiting">Ağın sabitlenmesi bekleniyor… %1$ds</string>
+    <string name="settings_network_switch_delay">Ağ Değiştirme Gecikmesi</string>
+    <string name="settings_network_switch_delay_desc">Ağ değişikliklerinden sonra VPN yeniden bağlantısını duraklat (Wi-Fi Araması için kullanışlıdır)</string>
+    <string name="settings_network_switch_delay_value">Gecikme: %1$d saniye</string>
 </resources>

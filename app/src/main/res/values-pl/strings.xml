@@ -586,4 +586,8 @@
     <string name="enable_all_user_apps">Włącz wszystkie aplikacje użytkownika</string>
     <string name="disable_all_system_apps">Wyłącz wszystkie aplikacje systemowe</string>
     <string name="enable_all_system_apps">Włącz wszystkie aplikacje systemowe</string>
+    <string name="vpn_network_switch_waiting">Oczekiwanie na stabilizację sieci… %1$ds</string>
+    <string name="settings_network_switch_delay">Opóźnienie zmiany sieci</string>
+    <string name="settings_network_switch_delay_desc">Wstrzymaj ponowne połączenie VPN po zmianie sieci (przydatne przy połączeniach Wi-Fi)</string>
+    <string name="settings_network_switch_delay_value">Opóźnienie: %1$d sekund</string>
 </resources>

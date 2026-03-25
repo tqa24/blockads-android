@@ -593,4 +593,8 @@
     <string name="enable_all_user_apps">הפעל את כל אפליקציות המשתמש</string>
     <string name="disable_all_system_apps">השבת את כל אפליקציות המערכת</string>
     <string name="enable_all_system_apps">הפעל את כל אפליקציות המערכת</string>
+    <string name="vpn_network_switch_waiting">ממתין להתייצבות הרשת… %1$ds</string>
+    <string name="settings_network_switch_delay">השהיית החלפת רשת</string>
+    <string name="settings_network_switch_delay_desc">השהה חיבור מחדש של VPN לאחר שינויי רשת (שימושי לשיחות Wi-Fi)</string>
+    <string name="settings_network_switch_delay_value">השהייה: %1$d שניות</string>
 </resources>

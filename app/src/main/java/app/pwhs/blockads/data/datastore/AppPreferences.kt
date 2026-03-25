@@ -5,6 +5,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
@@ -51,6 +52,8 @@ class AppPreferences(private val context: Context) {
         private val KEY_WG_CONFIG_JSON = stringPreferencesKey("wg_config_json")
         private val KEY_HTTPS_FILTERING_ENABLED = booleanPreferencesKey("https_filtering_enabled")
         private val KEY_SELECTED_BROWSERS = stringSetPreferencesKey("selected_browsers")
+        private val KEY_NETWORK_SWITCH_DELAY_ENABLED = booleanPreferencesKey("network_switch_delay_enabled")
+        private val KEY_NETWORK_SWITCH_DELAY_SEC = intPreferencesKey("network_switch_delay_sec")
 
         const val ROUTING_MODE_DIRECT = "direct"
         const val ROUTING_MODE_WIREGUARD = "wireguard"
@@ -126,6 +129,14 @@ class AppPreferences(private val context: Context) {
 
     val autoReconnect: Flow<Boolean> = context.dataStore.data.map { prefs ->
         prefs[KEY_AUTO_RECONNECT] ?: true
+    }
+
+    val networkSwitchDelayEnabled: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[KEY_NETWORK_SWITCH_DELAY_ENABLED] ?: false
+    }
+
+    val networkSwitchDelaySec: Flow<Int> = context.dataStore.data.map { prefs ->
+        prefs[KEY_NETWORK_SWITCH_DELAY_SEC] ?: 30
     }
 
     val filterUrl: Flow<String> = context.dataStore.data.map { prefs ->
@@ -412,6 +423,18 @@ class AppPreferences(private val context: Context) {
     suspend fun setFirewallEnabled(enabled: Boolean) {
         context.dataStore.edit { prefs ->
             prefs[KEY_FIREWALL_ENABLED] = enabled
+        }
+    }
+
+    suspend fun setNetworkSwitchDelayEnabled(enabled: Boolean) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_NETWORK_SWITCH_DELAY_ENABLED] = enabled
+        }
+    }
+
+    suspend fun setNetworkSwitchDelaySec(seconds: Int) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_NETWORK_SWITCH_DELAY_SEC] = seconds.coerceIn(5, 120)
         }
     }
 

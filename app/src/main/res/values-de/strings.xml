@@ -595,4 +595,8 @@
     <string name="enable_all_user_apps">Alle Benutzer-Apps aktivieren</string>
     <string name="disable_all_system_apps">Alle System-Apps deaktivieren</string>
     <string name="enable_all_system_apps">Alle System-Apps aktivieren</string>
+    <string name="vpn_network_switch_waiting">Warten auf Netzwerkstabilisierung… %1$ds</string>
+    <string name="settings_network_switch_delay">Verzögerung bei Netzwerkwechsel</string>
+    <string name="settings_network_switch_delay_desc">VPN-Neuverbindung nach Netzwerkwechsel pausieren (nützlich für WLAN-Anrufe)</string>
+    <string name="settings_network_switch_delay_value">Verzögerung: %1$d Sekunden</string>
 </resources>

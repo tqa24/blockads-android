@@ -563,4 +563,8 @@
     <string name="enable_all_user_apps">すべてのユーザーアプリを有効にする</string>
     <string name="disable_all_system_apps">すべてのシステムアプリを無効にする</string>
     <string name="enable_all_system_apps">すべてのシステムアプリを有効にする</string>
+    <string name="vpn_network_switch_waiting">ネットワークの安定化を待機中… %1$d秒</string>
+    <string name="settings_network_switch_delay">ネットワーク切り替えの遅延</string>
+    <string name="settings_network_switch_delay_desc">ネットワーク変更後のVPN再接続を一時停止（Wi-Fi通話に便利）</string>
+    <string name="settings_network_switch_delay_value">遅延: %1$d秒</string>
 </resources>

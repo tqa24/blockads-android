@@ -80,7 +80,6 @@ type Engine struct {
 	domainChecker   DomainChecker
 	firewallChecker FirewallChecker
 	appResolver     AppResolver
-	protectFn       func(fd int) bool
 
 	adTries   []*MmapTrie
 	adTrieIDs []string
@@ -313,7 +312,6 @@ func (e *Engine) Start(fd int, protector SocketProtector, wgConfigJSON string) {
 			return protector.Protect(fd)
 		}
 	}
-	e.protectFn = protectFn
 	e.resolver = NewResolver(protectFn)
 	e.resolver.Configure(ParseProtocol(e.protocol), e.primaryDNS, e.fallbackDNS, e.dohURL)
 	e.mu.Unlock()

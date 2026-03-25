@@ -202,6 +202,9 @@
     <string name="settings_lang_in" translatable="false">Bahasa Indonesia</string>
     <string name="settings_lang_pt_br" translatable="false">Português (Brasil)</string>
     <string name="settings_lang_uk" translatable="false">Українська</string>
+    <string name="settings_lang_de" translatable="false">Deutsch</string>
+    <string name="settings_lang_cs" translatable="false">Čeština</string>
+    <string name="settings_lang_iw" translatable="false">עברית</string>
     <string name="settings_high_contrast">High Contrast</string>
     <string name="settings_high_contrast_desc">Increase contrast for better visibility</string>
     <string name="settings_accent_color">Accent Color</string>

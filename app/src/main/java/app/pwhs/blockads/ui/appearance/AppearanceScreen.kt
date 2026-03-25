@@ -366,9 +366,39 @@ fun AppearanceScreen(
                             AppPreferences.LANGUAGE_EN
                         ),
                         Triple(
-                            R.string.settings_lang_vi,
+                            R.string.settings_lang_ar,
                             Icons.Default.Language,
-                            AppPreferences.LANGUAGE_VI
+                            AppPreferences.LANGUAGE_AR
+                        ),
+                        Triple(
+                            R.string.settings_lang_cs,
+                            Icons.Default.Language,
+                            AppPreferences.LANGUAGE_CS
+                        ),
+                        Triple(
+                            R.string.settings_lang_de,
+                            Icons.Default.Language,
+                            AppPreferences.LANGUAGE_DE
+                        ),
+                        Triple(
+                            R.string.settings_lang_es,
+                            Icons.Default.Language,
+                            AppPreferences.LANGUAGE_ES
+                        ),
+                        Triple(
+                            R.string.settings_lang_in,
+                            Icons.Default.Language,
+                            AppPreferences.LANGUAGE_IN
+                        ),
+                        Triple(
+                            R.string.settings_lang_it,
+                            Icons.Default.Language,
+                            AppPreferences.LANGUAGE_IT
+                        ),
+                        Triple(
+                            R.string.settings_lang_iw,
+                            Icons.Default.Language,
+                            AppPreferences.LANGUAGE_IW
                         ),
                         Triple(
                             R.string.settings_lang_ja,
@@ -381,49 +411,9 @@ fun AppearanceScreen(
                             AppPreferences.LANGUAGE_KO
                         ),
                         Triple(
-                            R.string.settings_lang_zh,
-                            Icons.Default.Language,
-                            AppPreferences.LANGUAGE_ZH
-                        ),
-                        Triple(
-                            R.string.settings_lang_th,
-                            Icons.Default.Language,
-                            AppPreferences.LANGUAGE_TH
-                        ),
-                        Triple(
-                            R.string.settings_lang_es,
-                            Icons.Default.Language,
-                            AppPreferences.LANGUAGE_ES
-                        ),
-                        Triple(
-                            R.string.settings_lang_ru,
-                            Icons.Default.Language,
-                            AppPreferences.LANGUAGE_RU
-                        ),
-                        Triple(
-                            R.string.settings_lang_it,
-                            Icons.Default.Language,
-                            AppPreferences.LANGUAGE_IT
-                        ),
-                        Triple(
-                            R.string.settings_lang_ar,
-                            Icons.Default.Language,
-                            AppPreferences.LANGUAGE_AR
-                        ),
-                        Triple(
-                            R.string.settings_lang_tr,
-                            Icons.Default.Language,
-                            AppPreferences.LANGUAGE_TR
-                        ),
-                        Triple(
                             R.string.settings_lang_pl,
                             Icons.Default.Language,
                             AppPreferences.LANGUAGE_PL
-                        ),
-                        Triple(
-                            R.string.settings_lang_in,
-                            Icons.Default.Language,
-                            AppPreferences.LANGUAGE_IN
                         ),
                         Triple(
                             R.string.settings_lang_pt_br,
@@ -431,10 +421,35 @@ fun AppearanceScreen(
                             AppPreferences.LANGUAGE_PT_BR
                         ),
                         Triple(
+                            R.string.settings_lang_ru,
+                            Icons.Default.Language,
+                            AppPreferences.LANGUAGE_RU
+                        ),
+                        Triple(
+                            R.string.settings_lang_th,
+                            Icons.Default.Language,
+                            AppPreferences.LANGUAGE_TH
+                        ),
+                        Triple(
+                            R.string.settings_lang_tr,
+                            Icons.Default.Language,
+                            AppPreferences.LANGUAGE_TR
+                        ),
+                        Triple(
                             R.string.settings_lang_uk,
                             Icons.Default.Language,
                             AppPreferences.LANGUAGE_UK
                         ),
+                        Triple(
+                            R.string.settings_lang_vi,
+                            Icons.Default.Language,
+                            AppPreferences.LANGUAGE_VI
+                        ),
+                        Triple(
+                            R.string.settings_lang_zh,
+                            Icons.Default.Language,
+                            AppPreferences.LANGUAGE_ZH
+                        )
                     )
                     languages.forEachIndexed { index, (labelRes, icon, langCode) ->
                         Row(

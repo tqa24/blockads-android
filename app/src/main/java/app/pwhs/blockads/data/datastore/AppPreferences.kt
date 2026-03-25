@@ -93,6 +93,12 @@ class AppPreferences(private val context: Context) {
 
         const val LANGUAGE_UK = "uk"
 
+        const val LANGUAGE_DE = "de"
+
+        const val LANGUAGE_CS = "cs"
+
+        const val LANGUAGE_IW = "iw"
+
         const val UPDATE_FREQUENCY_6H = "6h"
         const val UPDATE_FREQUENCY_12H = "12h"
         const val UPDATE_FREQUENCY_24H = "24h"

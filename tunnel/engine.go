@@ -491,6 +491,58 @@ func (e *Engine) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 	domain = strings.TrimSuffix(domain, ".")
 	queryType := r.Question[0].Qtype
 	appName := "RootProxy"
+	// Try to resolve the real app name from the source port of the incoming connection.
+	// iptables REDIRECT preserves the original source port, so we can look up the UID
+	// in /proc/net/udp by matching that port.
+	if e.appResolver != nil {
+		if addr := w.RemoteAddr(); addr != nil {
+			srcPort := 0
+			srcIP := net.IPv4(127, 0, 0, 1)
+
+			switch a := addr.(type) {
+			case *net.UDPAddr:
+				srcPort = a.Port
+				if a.IP != nil {
+					srcIP = a.IP
+				}
+			case *net.TCPAddr:
+				srcPort = a.Port
+				if a.IP != nil {
+					srcIP = a.IP
+				}
+			default:
+				// Fallback: parse "host:port" string
+				if host, portStr, err := net.SplitHostPort(addr.String()); err == nil {
+					if p, err2 := fmt.Sscanf(portStr, "%d", &srcPort); p == 1 && err2 == nil {
+						if parsed := net.ParseIP(host); parsed != nil {
+							srcIP = parsed
+						}
+					}
+				}
+			}
+
+			if srcPort > 0 {
+				// Normalize to IPv4 bytes if possible, otherwise use raw 16-byte IPv6
+				ipBytes := srcIP.To4()
+				if ipBytes == nil {
+					ipBytes = srcIP.To16()
+				}
+				if ipBytes == nil {
+					ipBytes = []byte{127, 0, 0, 1}
+				}
+
+				resolved := e.appResolver.ResolveApp(
+					srcPort,
+					ipBytes,
+					[]byte{127, 0, 0, 1},
+					53,
+				)
+				if resolved != "" {
+					appName = resolved
+				}
+			}
+		}
+	}
 
 	// 1. Custom Rules Override
 	if e.domainChecker != nil {

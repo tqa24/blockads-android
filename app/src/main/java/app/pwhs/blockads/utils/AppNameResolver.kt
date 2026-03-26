@@ -88,10 +88,51 @@ class AppNameResolver(private val context: Context) {
     private fun findUidFromProcNet(port: Int): Int {
         val hexPort = String.format("%04X", port)
 
+        // Normal unprivileged read (works for own app's sockets and on older Android)
         findUidInProcFile("/proc/net/udp", hexPort)?.let { return it }
         findUidInProcFile("/proc/net/udp6", hexPort)?.let { return it }
 
+        // Root-privileged read: on Android 10+, SELinux restricts /proc/net/udp
+        // to only show the app's own sockets. In Root Proxy mode, we use the
+        // established root shell to read the full socket table.
+        findUidFromProcNetRoot(hexPort)?.let { return it }
+
         return -1
+    }
+
+    /**
+     * Read /proc/net/udp and /proc/net/udp6 via root shell (libsu).
+     * This bypasses SELinux restrictions on Android 10+ that prevent
+     * normal apps from seeing other apps' socket entries.
+     */
+    private fun findUidFromProcNetRoot(hexPort: String): Int? {
+        try {
+            val result = com.topjohnwu.superuser.Shell.cmd(
+                "cat /proc/net/udp /proc/net/udp6 2>/dev/null"
+            ).exec()
+            if (!result.isSuccess) return null
+
+            for (line in result.out) {
+                try {
+                    val parts = line.trim().split("\\s+".toRegex())
+                    if (parts.size >= 8) {
+                        val localAddress = parts[1]
+                        val colonIndex = localAddress.lastIndexOf(':')
+                        if (colonIndex >= 0) {
+                            val localPort = localAddress.substring(colonIndex + 1)
+                            if (localPort.equals(hexPort, ignoreCase = true)) {
+                                return parts[7].toIntOrNull()
+                            }
+                        }
+                    }
+                } catch (_: Exception) {
+                    // Skip malformed lines
+                }
+            }
+        } catch (e: Exception) {
+            Timber.d("Root /proc/net lookup failed: ${e.message}")
+        }
+        return null
     }
 
     private fun findUidInProcFile(path: String, hexPort: String): Int? {

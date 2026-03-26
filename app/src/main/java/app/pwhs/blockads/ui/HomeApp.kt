@@ -1,6 +1,7 @@
 package app.pwhs.blockads.ui
 
 import android.annotation.SuppressLint
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalTextStyle
@@ -147,6 +148,12 @@ fun HomeApp(
             }
         }
     ) {
+        // When on a non-Home tab root, back should switch to Home tab instead of exiting
+        BackHandler(enabled = currentTab != BottomBarScreen.Home && currentBackStack.size <= 1) {
+            currentTab = BottomBarScreen.Home
+            showBottomBar = true
+        }
+
         NavDisplay(
             backStack = currentBackStack,
             onBack = {
@@ -205,7 +212,6 @@ fun HomeApp(
                             settingsStack.add(AppManagementKey)
                         },
                         onNavigateToFilterSetup = {
-                            showBottomBar = false
                             currentTab = BottomBarScreen.FilterSetup
                         },
                         onNavigateToWhitelistApps = {

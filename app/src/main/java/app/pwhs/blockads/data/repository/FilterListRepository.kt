@@ -40,245 +40,6 @@ class FilterListRepository(
 
         private const val FILTER_LIST_JSON_URL =
             "https://raw.githubusercontent.com/pass-with-high-score/blockads-default-filter/refs/heads/main/output/filter_lists.json"
-        private const val BASE_BIN_URL =
-            "https://raw.githubusercontent.com/pass-with-high-score/blockads-default-filter/refs/heads/main/output"
-
-        val DEFAULT_LISTS = listOf(
-            // ── Vietnamese ──────────────────────────────────────────────
-            FilterList(
-                name = "ABPVN",
-                url = "https://abpvn.com/android/abpvn.txt",
-                description = "Vietnamese ad filter list",
-                isEnabled = false, isBuiltIn = true,
-                ruleCount = 18307,
-                bloomUrl = "$BASE_BIN_URL/abpvn.bloom",
-                trieUrl = "$BASE_BIN_URL/abpvn.trie",
-                originalUrl = "https://abpvn.com/android/abpvn.txt"
-            ),
-            FilterList(
-                name = "HostsVN",
-                url = "https://raw.githubusercontent.com/bigdargon/hostsVN/master/hosts",
-                description = "Vietnamese hosts-based ad blocker",
-                isEnabled = false, isBuiltIn = true,
-                ruleCount = 17583,
-                bloomUrl = "$BASE_BIN_URL/hostsvn.bloom",
-                trieUrl = "$BASE_BIN_URL/hostsvn.trie",
-                originalUrl = "https://raw.githubusercontent.com/bigdargon/hostsVN/master/hosts"
-            ),
-            // ── Popular Global Filters ──────────────────────────────────
-            FilterList(
-                name = "StevenBlack Unified",
-                url = "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts",
-                description = "Unified hosts from multiple curated sources — ads & malware",
-                isEnabled = true, isBuiltIn = true,
-                ruleCount = 81919,
-                bloomUrl = "$BASE_BIN_URL/stevenblack.bloom",
-                trieUrl = "$BASE_BIN_URL/stevenblack.trie",
-                originalUrl = "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts"
-            ),
-            FilterList(
-                name = "StevenBlack Gambling",
-                url = "https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/gambling-only/hosts",
-                description = "Block gambling & betting sites",
-                isEnabled = false, isBuiltIn = true,
-                ruleCount = 5936,
-                bloomUrl = "$BASE_BIN_URL/stevenblack_gambling.bloom",
-                trieUrl = "$BASE_BIN_URL/stevenblack_gambling.trie",
-                originalUrl = "https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/gambling-only/hosts"
-            ),
-            FilterList(
-                name = "StevenBlack Adult",
-                url = "https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/porn-only/hosts",
-                description = "Block adult content domains",
-                isEnabled = false, isBuiltIn = true,
-                ruleCount = 76509,
-                bloomUrl = "$BASE_BIN_URL/stevenblack_porn.bloom",
-                trieUrl = "$BASE_BIN_URL/stevenblack_porn.trie",
-                originalUrl = "https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/porn-only/hosts"
-            ),
-            FilterList(
-                name = "StevenBlack Social",
-                url = "https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/social-only/hosts",
-                description = "Block social media platforms",
-                isEnabled = false, isBuiltIn = true,
-                ruleCount = 3243,
-                bloomUrl = "$BASE_BIN_URL/stevenblack_social.bloom",
-                trieUrl = "$BASE_BIN_URL/stevenblack_social.trie",
-                originalUrl = "https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/social-only/hosts"
-            ),
-            FilterList(
-                name = "EasyList",
-                url = "https://easylist.to/easylist/easylist.txt",
-                description = "Most popular global ad filter — blocks ads on most websites",
-                isEnabled = true, isBuiltIn = true,
-                ruleCount = 70207,
-                bloomUrl = "$BASE_BIN_URL/easylist.bloom",
-                trieUrl = "$BASE_BIN_URL/easylist.trie",
-                cssUrl = "$BASE_BIN_URL/easylist.css",
-                originalUrl = "https://easylist.to/easylist/easylist.txt"
-            ),
-            FilterList(
-                name = "EasyPrivacy",
-                url = "https://easylist.to/easylist/easyprivacy.txt",
-                description = "Blocks tracking scripts and privacy-invasive trackers",
-                isEnabled = false, isBuiltIn = true,
-                ruleCount = 50933,
-                bloomUrl = "$BASE_BIN_URL/easyprivacy.bloom",
-                trieUrl = "$BASE_BIN_URL/easyprivacy.trie",
-                cssUrl = "$BASE_BIN_URL/easyprivacy.css",
-                originalUrl = "https://easylist.to/easylist/easyprivacy.txt"
-            ),
-            FilterList(
-                name = "Peter Lowe's Ad and tracking server list",
-                url = "https://pgl.yoyo.org/adservers/serverlist.php?hostformat=adblockplus&showintro=1&mimetype=plaintext",
-                description = "Lightweight host-based ad and tracking server blocklist",
-                isEnabled = false, isBuiltIn = true,
-                ruleCount = 3516,
-                bloomUrl = "$BASE_BIN_URL/yoyo_adservers.bloom",
-                trieUrl = "$BASE_BIN_URL/yoyo_adservers.trie",
-                originalUrl = "https://pgl.yoyo.org/adservers/serverlist.php?hostformat=adblockplus&showintro=1&mimetype=plaintext"
-            ),
-            // ── AdGuard ──────────────────────────────────────────────────
-            FilterList(
-                name = "AdGuard DNS",
-                url = "https://adguardteam.github.io/AdGuardSDNSFilter/Filters/filter.txt",
-                description = "AdGuard DNS filter for ad & tracker blocking",
-                isEnabled = false, isBuiltIn = true,
-                ruleCount = 162083,
-                bloomUrl = "$BASE_BIN_URL/adguard_dns.bloom",
-                trieUrl = "$BASE_BIN_URL/adguard_dns.trie",
-                originalUrl = "https://adguardteam.github.io/AdGuardSDNSFilter/Filters/filter.txt"
-            ),
-            FilterList(
-                name = "AdGuard Base Filter",
-                url = "https://filters.adtidy.org/extension/ublock/filters/2.txt",
-                description = "AdGuard base ad filter — comprehensive alternative to EasyList",
-                isEnabled = false, isBuiltIn = true,
-                ruleCount = 96398,
-                bloomUrl = "$BASE_BIN_URL/adguard_base.bloom",
-                trieUrl = "$BASE_BIN_URL/adguard_base.trie",
-                cssUrl = "$BASE_BIN_URL/adguard_base.css",
-                originalUrl = "https://filters.adtidy.org/extension/ublock/filters/2.txt"
-            ),
-            FilterList(
-                name = "AdGuard Mobile Ads",
-                url = "https://filters.adtidy.org/extension/ublock/filters/11.txt",
-                description = "Optimized filter for mobile ads in apps and mobile websites",
-                isEnabled = false, isBuiltIn = true,
-                ruleCount = 4620,
-                bloomUrl = "$BASE_BIN_URL/adguard_mobile.bloom",
-                trieUrl = "$BASE_BIN_URL/adguard_mobile.trie",
-                cssUrl = "$BASE_BIN_URL/adguard_mobile.css",
-                originalUrl = "https://filters.adtidy.org/extension/ublock/filters/11.txt"
-            ),
-            FilterList(
-                name = "AdGuard Social Media",
-                url = "https://filters.adtidy.org/extension/ublock/filters/4.txt",
-                description = "Blocks social media widgets — like buttons, share buttons, and embeds",
-                isEnabled = false, isBuiltIn = true,
-                ruleCount = 10020,
-                bloomUrl = "$BASE_BIN_URL/adguard_social.bloom",
-                trieUrl = "$BASE_BIN_URL/adguard_social.trie",
-                cssUrl = "$BASE_BIN_URL/adguard_social.css",
-                originalUrl = "https://filters.adtidy.org/extension/ublock/filters/4.txt"
-            ),
-            // ── Hagezi DNS Blocklists ────────────────────────────────────
-            FilterList(
-                name = "Hagezi Light",
-                url = "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/light.txt",
-                description = "Hagezi Light — basic ad & tracker blocking with minimal false positives",
-                isEnabled = false, isBuiltIn = true,
-                ruleCount = 69283,
-                bloomUrl = "$BASE_BIN_URL/hagezi_light.bloom",
-                trieUrl = "$BASE_BIN_URL/hagezi_light.trie",
-                originalUrl = "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/light.txt"
-            ),
-            FilterList(
-                name = "Hagezi Normal",
-                url = "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/multi.txt",
-                description = "Hagezi Normal — all-round protection against ads, tracking & malware",
-                isEnabled = false, isBuiltIn = true,
-                ruleCount = 145970,
-                bloomUrl = "$BASE_BIN_URL/hagezi_multi.bloom",
-                trieUrl = "$BASE_BIN_URL/hagezi_multi.trie",
-                originalUrl = "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/multi.txt"
-            ),
-            FilterList(
-                name = "Hagezi Pro",
-                url = "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/pro.txt",
-                description = "Hagezi Pro — extended protection, recommended for advanced users",
-                isEnabled = false, isBuiltIn = true,
-                ruleCount = 188957,
-                bloomUrl = "$BASE_BIN_URL/hagezi_pro.bloom",
-                trieUrl = "$BASE_BIN_URL/hagezi_pro.trie",
-                originalUrl = "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/pro.txt"
-            ),
-            FilterList(
-                name = "Hagezi Pro++",
-                url = "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/pro.plus.txt",
-                description = "Hagezi Pro++ — aggressive blocking, may break some apps/sites",
-                isEnabled = false, isBuiltIn = true,
-                ruleCount = 236213,
-                bloomUrl = "$BASE_BIN_URL/hagezi_pro_plus.bloom",
-                trieUrl = "$BASE_BIN_URL/hagezi_pro_plus.trie",
-                originalUrl = "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/pro.plus.txt"
-            ),
-            FilterList(
-                name = "Hagezi Ultimate",
-                url = "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/ultimate.txt",
-                description = "Hagezi Ultimate — extremely aggressive blocking, will break most apps/sites",
-                isEnabled = false, isBuiltIn = true,
-                ruleCount = 279444,
-                bloomUrl = "$BASE_BIN_URL/hagezi_ultimate.bloom",
-                trieUrl = "$BASE_BIN_URL/hagezi_ultimate.trie",
-                originalUrl = "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/ultimate.txt"
-            ),
-            FilterList(
-                name = "Hagezi TIF",
-                url = "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/tif.txt",
-                description = "Hagezi Threat Intelligence — blocks malware, phishing, scam & cryptojacking",
-                isEnabled = false, isBuiltIn = true,
-                category = FilterList.CATEGORY_SECURITY,
-                ruleCount = 688511,
-                bloomUrl = "$BASE_BIN_URL/hagezi_tif.bloom",
-                trieUrl = "$BASE_BIN_URL/hagezi_tif.trie",
-                originalUrl = "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/tif.txt"
-            ),
-            // ── Security / Phishing / Malware ───────────────────────────
-            FilterList(
-                name = "URLhaus Malicious URL Blocklist",
-                url = "https://urlhaus.abuse.ch/downloads/hostfile/",
-                description = "Blocks malware distribution sites — updated frequently by abuse.ch",
-                isEnabled = false, isBuiltIn = true,
-                category = FilterList.CATEGORY_SECURITY,
-                ruleCount = 470,
-                bloomUrl = "$BASE_BIN_URL/urlhaus_malware.bloom",
-                trieUrl = "$BASE_BIN_URL/urlhaus_malware.trie",
-                originalUrl = "https://urlhaus.abuse.ch/downloads/hostfile/"
-            ),
-            FilterList(
-                name = "PhishTank Blocklist",
-                url = "https://phishing.army/download/phishing_army_blocklist.txt",
-                description = "Blocks known phishing websites that steal personal information",
-                isEnabled = false, isBuiltIn = true,
-                category = FilterList.CATEGORY_SECURITY,
-                ruleCount = 153524,
-                bloomUrl = "$BASE_BIN_URL/phishing_army.bloom",
-                trieUrl = "$BASE_BIN_URL/phishing_army.trie",
-                originalUrl = "https://phishing.army/download/phishing_army_blocklist.txt"
-            ),
-            FilterList(
-                name = "Malware Domain List",
-                url = "https://raw.githubusercontent.com/RPiList/specials/master/Blocklisten/malware",
-                description = "Community-curated list of domains distributing malware",
-                isEnabled = false, isBuiltIn = true,
-                category = FilterList.CATEGORY_SECURITY,
-                ruleCount = 477891,
-                bloomUrl = "$BASE_BIN_URL/rpilist_malware.bloom",
-                trieUrl = "$BASE_BIN_URL/rpilist_malware.trie",
-                originalUrl = "https://raw.githubusercontent.com/RPiList/specials/master/Blocklisten/malware"
-            ),
-        )
     }
 
     // Paths to pre-compiled binary files for Go Native Engine (CSV strings)
@@ -375,56 +136,11 @@ class FilterListRepository(
     // ────────────────────────────────────────────────────────────────────
 
     /**
-     * Seeds default filter lists with pre-compiled URLs.
+     * Seeds default filter lists by fetching from the remote JSON URL.
      * Updates existing entries so bloomUrl/trieUrl/cssUrl/ruleCount stay current.
      */
     suspend fun seedDefaultsIfNeeded() {
-        val existingLists = filterListDao.getAllSync()
-        val existingByName = existingLists.associateBy { it.name }
-
-        for (defaultList in DEFAULT_LISTS) {
-            val existing = existingByName[defaultList.name]
-            if (existing == null) {
-                filterListDao.insert(defaultList.copy(domainCount = defaultList.ruleCount))
-                Timber.d("Seeded new built-in filter: ${defaultList.name}")
-            } else {
-                val needsUpdate = existing.url != defaultList.url ||
-                        existing.description != defaultList.description ||
-                        existing.category != defaultList.category ||
-                        existing.bloomUrl != defaultList.bloomUrl ||
-                        existing.trieUrl != defaultList.trieUrl ||
-                        existing.cssUrl != defaultList.cssUrl ||
-                        existing.ruleCount != defaultList.ruleCount ||
-                        existing.domainCount != defaultList.ruleCount ||
-                        existing.originalUrl != defaultList.originalUrl ||
-                        !existing.isBuiltIn
-
-                if (needsUpdate) {
-                    filterListDao.update(
-                        existing.copy(
-                            url = defaultList.url,
-                            description = defaultList.description,
-                            category = defaultList.category,
-                            bloomUrl = defaultList.bloomUrl,
-                            trieUrl = defaultList.trieUrl,
-                            cssUrl = defaultList.cssUrl,
-                            ruleCount = defaultList.ruleCount,
-                            domainCount = defaultList.ruleCount,
-                            originalUrl = defaultList.originalUrl,
-                            isBuiltIn = true
-                        )
-                    )
-                    Timber.d("Updated built-in filter: ${defaultList.name}")
-                }
-            }
-        }
-
-        val defaultNames = DEFAULT_LISTS.map { it.name }.toSet()
-        val obsolete = existingLists.filter { it.isBuiltIn && it.name !in defaultNames }
-        for (o in obsolete) {
-            filterListDao.delete(o)
-            Timber.d("Removed obsolete built-in filter: ${o.name}")
-        }
+        fetchAndSyncRemoteFilterLists()
     }
 
     /**
@@ -449,27 +165,37 @@ class FilterListRepository(
 
             for (remote in remoteLists) {
                 val existing = existingByName[remote.name]
+                val category = if (remote.category == "security") FilterList.CATEGORY_SECURITY else FilterList.CATEGORY_AD
                 if (existing != null) {
-                    if (existing.bloomUrl != remote.bloomUrl ||
+                    val needsUpdate = existing.url != (remote.originalUrl ?: "") ||
+                        existing.description != (remote.description ?: "") ||
+                        existing.category != category ||
+                        existing.bloomUrl != remote.bloomUrl ||
                         existing.trieUrl != remote.trieUrl ||
                         existing.cssUrl != (remote.cssUrl ?: "") ||
-                        existing.ruleCount != remote.ruleCount
-                    ) {
+                        existing.ruleCount != remote.ruleCount ||
+                        existing.domainCount != remote.ruleCount ||
+                        existing.originalUrl != (remote.originalUrl ?: existing.originalUrl) ||
+                        !existing.isBuiltIn
+
+                    if (needsUpdate) {
                         filterListDao.update(
                             existing.copy(
+                                url = remote.originalUrl ?: "",
+                                description = remote.description ?: "",
+                                category = category,
                                 bloomUrl = remote.bloomUrl,
                                 trieUrl = remote.trieUrl,
                                 domainCount = remote.ruleCount,
                                 cssUrl = remote.cssUrl ?: "",
                                 ruleCount = remote.ruleCount,
-                                originalUrl = remote.originalUrl ?: existing.originalUrl
+                                originalUrl = remote.originalUrl ?: existing.originalUrl,
+                                isBuiltIn = true
                             )
                         )
-                        Timber.d("Synced URLs for: ${remote.name}")
+                        Timber.d("Updated remote filter: ${remote.name}")
                     }
                 } else {
-                    val category =
-                        if (remote.category == "security") FilterList.CATEGORY_SECURITY else FilterList.CATEGORY_AD
                     filterListDao.insert(
                         FilterList(
                             name = remote.name,
@@ -488,6 +214,14 @@ class FilterListRepository(
                     Timber.d("Inserted new remote filter: ${remote.name}")
                 }
             }
+
+            val remoteNames = remoteLists.map { it.name }.toSet()
+            val obsolete = existingLists.filter { it.isBuiltIn && it.name !in remoteNames }
+            for (o in obsolete) {
+                filterListDao.delete(o)
+                Timber.d("Removed obsolete built-in filter: ${o.name}")
+            }
+
             Timber.d("Synced ${remoteLists.size} filters from remote JSON")
         } catch (e: Exception) {
             Timber.e(e, "Failed to fetch remote filter list JSON")

@@ -315,7 +315,7 @@ fun OnboardingScreen(
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = Color.Black
+                    contentColor = Color.White
                 )
             ) {
                 Text(

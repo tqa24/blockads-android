@@ -16,6 +16,7 @@ import app.pwhs.blockads.data.datastore.AppPreferences
 import kotlinx.coroutines.flow.first
 import app.pwhs.blockads.data.repository.FilterListRepository
 import app.pwhs.blockads.data.dao.DnsLogDao
+import app.pwhs.blockads.data.dao.FirewallRuleDao
 import app.pwhs.blockads.utils.AppNameResolver
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -87,8 +88,10 @@ class RootProxyService : Service() {
     private lateinit var appPrefs: AppPreferences
     private lateinit var filterRepo: FilterListRepository
     private lateinit var dnsLogDao: DnsLogDao
+    private lateinit var firewallRuleDao: FirewallRuleDao
     private lateinit var appNameResolver: AppNameResolver
     private lateinit var goTunnelAdapter: GoTunnelAdapter
+    private var firewallManager: FirewallManager? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -96,6 +99,7 @@ class RootProxyService : Service() {
         appPrefs = koin.get()
         filterRepo = koin.get()
         dnsLogDao = koin.get()
+        firewallRuleDao = koin.get()
         appNameResolver = AppNameResolver(this)
         goTunnelAdapter = GoTunnelAdapter(
             context = this,
@@ -103,7 +107,7 @@ class RootProxyService : Service() {
             dnsLogDao = dnsLogDao,
             scope = serviceScope,
             appNameResolver = appNameResolver,
-            firewallManagerProvider = { null } // Per-app firewall not supported in MVP Root Mode
+            firewallManagerProvider = { firewallManager }
         )
         Timber.d("RootProxyService created")
     }
@@ -154,7 +158,44 @@ class RootProxyService : Service() {
                 goTunnelAdapter.configureDns(protocol, primary, fallback, dohUrl)
                 goTunnelAdapter.configureSafeSearch(safeSearch, youtubeSafe)
                 goTunnelAdapter.setBlockResponseType(responseType)
-                
+
+                // Load firewall rules if enabled
+                val firewallEnabled = appPrefs.firewallEnabled.first()
+                if (firewallEnabled) {
+                    val fwManager = FirewallManager(this@RootProxyService, firewallRuleDao)
+                    fwManager.loadRules()
+                    firewallManager = fwManager
+                    Timber.d("Firewall enabled for Root Proxy, rules loaded")
+                } else {
+                    firewallManager = null
+                }
+
+                // Periodically refresh firewall rules
+                launch {
+                    var lastEnabled = firewallEnabled
+                    while (true) {
+                        try {
+                            val currentEnabled = appPrefs.firewallEnabled.first()
+                            if (currentEnabled) {
+                                if (!lastEnabled || firewallManager == null) {
+                                    val fwManager = FirewallManager(this@RootProxyService, firewallRuleDao)
+                                    fwManager.loadRules()
+                                    firewallManager = fwManager
+                                    Timber.d("Firewall re-enabled, rules reloaded")
+                                } else {
+                                    firewallManager?.loadRules()
+                                }
+                            } else {
+                                firewallManager = null
+                            }
+                            lastEnabled = currentEnabled
+                        } catch (e: Exception) {
+                            Timber.e(e, "Error refreshing firewall rules")
+                        }
+                        delay(15_000L)
+                    }
+                }
+
                 val engineStarted = goTunnelAdapter.startStandalone(port = 15353)
                 if (!engineStarted) {
                     Timber.e("Go engine failed to start standalone mode")

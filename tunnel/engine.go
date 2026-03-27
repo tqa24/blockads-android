@@ -566,6 +566,14 @@ func (e *Engine) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 		}
 	}
 
+	// 0. Firewall (App Blocker) Check
+	if e.firewallChecker != nil && appName != "" && appName != "RootProxy" {
+		if e.firewallChecker.ShouldBlock(appName) {
+			e.standaloneBlock(w, r, "firewall", appName, startTime)
+			return
+		}
+	}
+
 	// 1. Custom Rules Override
 	if e.domainChecker != nil {
 		override := e.domainChecker.HasCustomRule(domain)

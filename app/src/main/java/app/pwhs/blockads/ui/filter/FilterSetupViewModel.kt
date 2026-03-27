@@ -9,6 +9,7 @@ import app.pwhs.blockads.data.dao.FilterListDao
 import app.pwhs.blockads.data.repository.CustomFilterManager
 import app.pwhs.blockads.data.repository.FilterListRepository
 import app.pwhs.blockads.service.AdBlockVpnService
+import app.pwhs.blockads.service.ServiceController
 import app.pwhs.blockads.ui.event.UiEvent
 import app.pwhs.blockads.ui.event.toast
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -72,7 +73,7 @@ class FilterSetupViewModel(
             filterListDao.setEnabled(filter.id, !filter.isEnabled)
             // Recalculate the active domain count immediately even if VPN is stopped
             filterRepo.loadAllEnabledFilters()
-            AdBlockVpnService.requestRestart(application.applicationContext)
+            ServiceController.requestRestart(application.applicationContext)
         }
     }
 
@@ -99,7 +100,7 @@ class FilterSetupViewModel(
 
                     // Reload all filters so the new custom filter is active
                     filterRepo.loadAllEnabledFilters()
-                    AdBlockVpnService.requestRestart(application.applicationContext)
+                    ServiceController.requestRestart(application.applicationContext)
                 },
                 onFailure = { _ ->
                     _events.toast(R.string.filter_update_failed)
@@ -115,7 +116,7 @@ class FilterSetupViewModel(
             customFilterManager.deleteCustomFilter(filter)
             // Reload the filter engine without this filter
             filterRepo.loadAllEnabledFilters()
-            AdBlockVpnService.requestRestart(application.applicationContext)
+            ServiceController.requestRestart(application.applicationContext)
         }
     }
 

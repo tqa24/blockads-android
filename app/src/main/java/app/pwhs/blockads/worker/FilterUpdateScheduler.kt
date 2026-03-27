@@ -21,7 +21,6 @@ object FilterUpdateScheduler {
         }
 
         val frequency = appPreferences.autoUpdateFrequency.first()
-        val wifiOnly = appPreferences.autoUpdateWifiOnly.first()
 
         // Don't schedule if set to manual
         if (frequency == AppPreferences.UPDATE_FREQUENCY_MANUAL) {
@@ -38,7 +37,7 @@ object FilterUpdateScheduler {
         }
 
         val constraints = Constraints.Builder()
-            .setRequiredNetworkType(if (wifiOnly) NetworkType.UNMETERED else NetworkType.CONNECTED)
+            .setRequiredNetworkType(NetworkType.CONNECTED)
             .build()
 
         val workRequest = PeriodicWorkRequestBuilder<FilterUpdateWorker>(

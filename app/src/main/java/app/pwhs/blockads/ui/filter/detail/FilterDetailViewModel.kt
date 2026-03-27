@@ -10,6 +10,7 @@ import app.pwhs.blockads.data.dao.FilterListDao
 import app.pwhs.blockads.data.repository.CustomFilterManager
 import app.pwhs.blockads.data.repository.FilterListRepository
 import app.pwhs.blockads.service.AdBlockVpnService
+import app.pwhs.blockads.service.ServiceController
 import app.pwhs.blockads.ui.event.UiEvent
 import app.pwhs.blockads.ui.event.toast
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -87,7 +88,7 @@ class FilterDetailViewModel(
         viewModelScope.launch {
             val f = filter.value ?: return@launch
             filterListDao.setEnabled(f.id, !f.isEnabled)
-            AdBlockVpnService.requestRestart(application.applicationContext)
+            ServiceController.requestRestart(application.applicationContext)
         }
     }
 
@@ -125,7 +126,7 @@ class FilterDetailViewModel(
             val f = filter.value ?: return@launch
             if (!f.isBuiltIn) {
                 filterListDao.delete(f)
-                AdBlockVpnService.requestRestart(application.applicationContext)
+                ServiceController.requestRestart(application.applicationContext)
             }
         }
     }
@@ -181,7 +182,7 @@ class FilterDetailViewModel(
                     // Reload the filter engine if the URL changed (binaries re-downloaded/re-compiled)
                     if (url != f.originalUrl && url != f.url) {
                         filterRepo.loadAllEnabledFilters()
-                        AdBlockVpnService.requestRestart(application.applicationContext)
+                        ServiceController.requestRestart(application.applicationContext)
                     }
                 },
                 onFailure = { error ->

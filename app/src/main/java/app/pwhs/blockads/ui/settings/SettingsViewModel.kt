@@ -21,6 +21,7 @@ import app.pwhs.blockads.data.entities.SettingsBackup
 import app.pwhs.blockads.data.entities.WhitelistDomain
 import app.pwhs.blockads.data.repository.FilterListRepository
 import app.pwhs.blockads.service.AdBlockVpnService
+import app.pwhs.blockads.service.ServiceController
 import app.pwhs.blockads.ui.event.UiEvent
 import app.pwhs.blockads.ui.event.toast
 import app.pwhs.blockads.utils.CustomRuleParser
@@ -108,6 +109,9 @@ class SettingsViewModel(
     val networkSwitchDelaySec: StateFlow<Int> = appPrefs.networkSwitchDelaySec
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 30)
 
+    val routingMode: StateFlow<String> = appPrefs.routingMode
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AppPreferences.ROUTING_MODE_DIRECT)
+
     private val _events = MutableSharedFlow<UiEvent>(extraBufferCapacity = 1)
     val events: SharedFlow<UiEvent> = _events.asSharedFlow()
 
@@ -127,6 +131,43 @@ class SettingsViewModel(
 
     fun setNetworkSwitchDelaySec(seconds: Int) {
         viewModelScope.launch { appPrefs.setNetworkSwitchDelaySec(seconds) }
+    }
+
+    fun setRoutingMode(mode: String) {
+        viewModelScope.launch { 
+            val oldMode = appPrefs.routingMode.first()
+            if (oldMode == mode) return@launch
+
+            appPrefs.setRoutingMode(mode) 
+            val context = getApplication<Application>().applicationContext
+            
+            val wasRoot = oldMode == AppPreferences.ROUTING_MODE_ROOT
+            val isRoot = mode == AppPreferences.ROUTING_MODE_ROOT
+
+            if (AdBlockVpnService.isRunning || app.pwhs.blockads.service.RootProxyService.isRunning) {
+                if (wasRoot && !isRoot) {
+                    app.pwhs.blockads.service.RootProxyService.stop(context)
+                    kotlinx.coroutines.delay(800)
+                    val startIntent = android.content.Intent(context, AdBlockVpnService::class.java).apply {
+                        action = AdBlockVpnService.ACTION_START
+                    }
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                        context.startForegroundService(startIntent)
+                    } else {
+                        context.startService(startIntent)
+                    }
+                } else if (!wasRoot && isRoot) {
+                    val stopIntent = android.content.Intent(context, AdBlockVpnService::class.java).apply {
+                        action = AdBlockVpnService.ACTION_STOP
+                    }
+                    context.startService(stopIntent)
+                    kotlinx.coroutines.delay(800)
+                    app.pwhs.blockads.service.RootProxyService.start(context)
+                } else {
+                    requestVpnRestart()
+                }
+            }
+        }
     }
 
     fun setAutoUpdateEnabled(enabled: Boolean) {
@@ -369,6 +410,6 @@ class SettingsViewModel(
     }
 
     private fun requestVpnRestart() {
-        AdBlockVpnService.requestRestart(getApplication<Application>().applicationContext)
+        ServiceController.requestRestart(getApplication<Application>().applicationContext)
     }
 }

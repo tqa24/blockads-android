@@ -180,7 +180,7 @@ class AdBlockVpnService : VpnService() {
 
         appNameResolver = AppNameResolver(this)
         goTunnelAdapter = GoTunnelAdapter(
-            vpnService = this,
+            context = this,
             filterRepo = filterRepo,
             dnsLogDao = dnsLogDao,
             scope = serviceScope,
@@ -352,41 +352,6 @@ class AdBlockVpnService : VpnService() {
                 // Load HTTPS Filtering setting
                 val httpsFilteringEnabled = appPrefs.getHttpsFilteringEnabledSnapshot()
 
-                // Periodically refresh firewall rules and enabled state while the VPN coroutine is running.
-                launch {
-                    var lastEnabled = firewallEnabled
-                    while (true) {
-                        try {
-                            val currentEnabled = appPrefs.firewallEnabled.first()
-
-                            if (currentEnabled) {
-                                if (!lastEnabled || firewallManager == null) {
-                                    val fwManager =
-                                        FirewallManager(this@AdBlockVpnService, firewallRuleDao)
-                                    fwManager.loadRules()
-                                    firewallManager = fwManager
-                                    Timber.d("Firewall enabled or re-enabled, rules loaded")
-                                } else {
-                                    try {
-                                        firewallManager?.loadRules()
-                                        Timber.d("Firewall rules reloaded")
-                                    } catch (e: Exception) {
-                                        Timber.e("Error reloading firewall rules: $e")
-                                    }
-                                }
-                            } else if (lastEnabled) {
-                                firewallManager = null
-                                Timber.d("Firewall disabled via preference change")
-                            }
-
-                            lastEnabled = currentEnabled
-                        } catch (e: Exception) {
-                            Timber.e(e, "Error while monitoring firewall preference")
-                        }
-
-                        delay(5_000)
-                    }
-                }
 
 
                 // ── Phase 3: Establish VPN tunnel ──
@@ -504,11 +469,19 @@ class AdBlockVpnService : VpnService() {
                     // start() blocks the coroutine while reading from TUN
                     // WireGuard init happens atomically inside Go before any packets are read
                     goTunnelAdapter.start(
-                        it,
-                        wgConfigJson,
-                        httpsFilteringEnabled,
-                        selectedBrowsers,
-                        certDir
+                        vpnInterface = it,
+                        wgConfigJson = wgConfigJson,
+                        httpsFilteringEnabled = httpsFilteringEnabled,
+                        selectedBrowsers = selectedBrowsers,
+                        certDir = certDir,
+                        socketProtector = { fd ->
+                            try {
+                                protect(fd)
+                            } catch (e: Exception) {
+                                Timber.e(e, "Failed to protect socket $fd")
+                                false
+                            }
+                        }
                     )
                 }
 

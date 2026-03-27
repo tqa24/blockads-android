@@ -13,6 +13,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import app.pwhs.blockads.data.datastore.AppPreferences
 import app.pwhs.blockads.service.AdBlockVpnService
+import app.pwhs.blockads.service.ServiceController
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -137,7 +138,7 @@ class HttpsFilteringViewModel(
             // Restart VPN so the running engine picks up the new browser UIDs.
             // (This ViewModel's engine is a separate instance from the VPN's engine,
             // so we must restart for changes to take effect.)
-            AdBlockVpnService.requestRestart(getApplication())
+            ServiceController.requestRestart(getApplication())
         }
     }
 

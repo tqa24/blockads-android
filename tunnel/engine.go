@@ -101,6 +101,12 @@ type Engine struct {
 	// MITM Proxy
 	mitmProxy *MitmProxy
 
+	// Standalone Servers
+	standaloneUdp *dns.Server
+	standaloneTcp *dns.Server
+	standaloneUdp6 *dns.Server
+	standaloneTcp6 *dns.Server
+
 	// Stats
 	totalQueries   atomic.Int64
 	blockedQueries atomic.Int64
@@ -400,14 +406,15 @@ func (e *Engine) Stop() {
 	proxy := e.mitmProxy
 	e.mitmProxy = nil
 
-	// Close TUN, shutdown resolver, clear caches — all while locked
+	// Close TUN, clear caches — all while locked
 	if e.tunFile != nil {
 		e.tunFile.Close()
 		e.tunFile = nil
 	}
-	if e.resolver != nil {
-		e.resolver.Shutdown()
-	}
+	
+	oldResolver := e.resolver
+	e.resolver = nil
+	
 	e.safeSearch.ClearCache()
 
 	for _, t := range e.adTries {
@@ -440,8 +447,36 @@ func (e *Engine) Stop() {
 	}
 	e.secBlooms = nil
 
+	oldUdp := e.standaloneUdp
+	e.standaloneUdp = nil
+	
+	oldTcp := e.standaloneTcp
+	e.standaloneTcp = nil
+
+	oldUdp6 := e.standaloneUdp6
+	e.standaloneUdp6 = nil
+
+	oldTcp6 := e.standaloneTcp6
+	e.standaloneTcp6 = nil
+
 	e.mu.Unlock()
 
+	// Shutdown servers OUTSIDE the lock to prevent deadlocks with ServeDNS handlers
+	if oldUdp != nil {
+		oldUdp.Shutdown()
+	}
+	if oldTcp != nil {
+		oldTcp.Shutdown()
+	}
+	if oldUdp6 != nil {
+		oldUdp6.Shutdown()
+	}
+	if oldTcp6 != nil {
+		oldTcp6.Shutdown()
+	}
+	if oldResolver != nil {
+		oldResolver.Shutdown()
+	}
 	// Stop proxy OUTSIDE the lock (proxy.Stop() may block briefly)
 	if proxy != nil {
 		proxy.Stop()
@@ -463,6 +498,358 @@ func (e *Engine) GetStats() string {
 	}
 	data, _ := json.Marshal(stats)
 	return string(data)
+}
+
+// ── Standalone DNS Server (Root/Proxy Mode) ──────────────────────────────────
+
+// ServeDNS handles incoming DNS queries directly from a socket (no TUN fd).
+func (e *Engine) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
+	startTime := time.Now()
+	if len(r.Question) == 0 {
+		return
+	}
+
+	domain := strings.ToLower(r.Question[0].Name)
+	domain = strings.TrimSuffix(domain, ".")
+	queryType := r.Question[0].Qtype
+	appName := "RootProxy"
+	// Try to resolve the real app name from the source port of the incoming connection.
+	// iptables REDIRECT preserves the original source port, so we can look up the UID
+	// in /proc/net/udp by matching that port.
+	if e.appResolver != nil {
+		if addr := w.RemoteAddr(); addr != nil {
+			srcPort := 0
+			srcIP := net.IPv4(127, 0, 0, 1)
+
+			switch a := addr.(type) {
+			case *net.UDPAddr:
+				srcPort = a.Port
+				if a.IP != nil {
+					srcIP = a.IP
+				}
+			case *net.TCPAddr:
+				srcPort = a.Port
+				if a.IP != nil {
+					srcIP = a.IP
+				}
+			default:
+				// Fallback: parse "host:port" string
+				if host, portStr, err := net.SplitHostPort(addr.String()); err == nil {
+					if p, err2 := fmt.Sscanf(portStr, "%d", &srcPort); p == 1 && err2 == nil {
+						if parsed := net.ParseIP(host); parsed != nil {
+							srcIP = parsed
+						}
+					}
+				}
+			}
+
+			if srcPort > 0 {
+				// Normalize to IPv4 bytes if possible, otherwise use raw 16-byte IPv6
+				ipBytes := srcIP.To4()
+				if ipBytes == nil {
+					ipBytes = srcIP.To16()
+				}
+				if ipBytes == nil {
+					ipBytes = []byte{127, 0, 0, 1}
+				}
+
+				resolved := e.appResolver.ResolveApp(
+					srcPort,
+					ipBytes,
+					[]byte{127, 0, 0, 1},
+					53,
+				)
+				if resolved != "" {
+					appName = resolved
+				}
+			}
+		}
+	}
+
+	// 0. Firewall (App Blocker) Check
+	if e.firewallChecker != nil && appName != "" && appName != "RootProxy" {
+		if e.firewallChecker.ShouldBlock(appName) {
+			e.standaloneBlock(w, r, "firewall", appName, startTime)
+			return
+		}
+	}
+
+	// 1. Custom Rules Override
+	if e.domainChecker != nil {
+		override := e.domainChecker.HasCustomRule(domain)
+		if override == 0 {
+			e.standaloneForward(w, r, appName, startTime)
+			return
+		} else if override == 1 {
+			reason := e.domainChecker.GetBlockReason(domain)
+			if reason == "" {
+				reason = "custom"
+			}
+			e.standaloneBlock(w, r, reason, appName, startTime)
+			return
+		}
+	}
+
+	// 2. SafeSearch / YouTube Check
+	ssResult := e.safeSearch.Check(domain, queryType)
+	if ssResult.Action == ActionRedirect {
+		if e.standaloneRedirect(w, r, ssResult.RedirectDomain, appName, startTime) {
+			return
+		}
+	}
+	if isYT, ytDomain := e.safeSearch.CheckYouTube(domain, queryType); isYT {
+		if e.standaloneRedirect(w, r, ytDomain, appName, startTime) {
+			return
+		}
+	}
+
+	// 3. Fast Native Go Tries (Security then Ads)
+	e.mu.Lock()
+	secBlooms := e.secBlooms
+	secTries := e.secTries
+	adBlooms := e.adBlooms
+	adTries := e.adTries
+	e.mu.Unlock()
+
+	for i, secTrie := range secTries {
+		if secTrie == nil { continue }
+		var secBloom *BloomFilter
+		if i < len(secBlooms) { secBloom = secBlooms[i] }
+		if secBloom == nil || secBloom.MightContainDomainOrParent(domain) {
+			if secTrie.ContainsOrParent(domain) {
+				reason := "security"
+				if i < len(e.secTrieIDs) { reason = e.secTrieIDs[i] }
+				e.standaloneBlock(w, r, reason, appName, startTime)
+				return
+			}
+		}
+	}
+
+	for i, adTrie := range adTries {
+		if adTrie == nil { continue }
+		var adBloom *BloomFilter
+		if i < len(adBlooms) { adBloom = adBlooms[i] }
+		if adBloom == nil || adBloom.MightContainDomainOrParent(domain) {
+			if adTrie.ContainsOrParent(domain) {
+				reason := "filter_list"
+				if i < len(e.adTrieIDs) { reason = e.adTrieIDs[i] }
+				e.standaloneBlock(w, r, reason, appName, startTime)
+				return
+			}
+		}
+	}
+
+	// 4. Fallback Kotlin DomainChecker
+	if e.domainChecker != nil && e.domainChecker.IsBlocked(domain) {
+		reason := e.domainChecker.GetBlockReason(domain)
+		if reason == "" {
+			reason = "filter_list"
+		}
+		e.standaloneBlock(w, r, reason, appName, startTime)
+		return
+	}
+
+	// 5. Forward to Upstream
+	e.standaloneForward(w, r, appName, startTime)
+}
+
+func (e *Engine) standaloneBlock(w dns.ResponseWriter, r *dns.Msg, blockedBy, appName string, startTime time.Time) {
+	m := new(dns.Msg)
+	m.SetReply(r)
+
+	switch e.responseType {
+	case ResponseNXDomain:
+		m.Rcode = dns.RcodeNameError
+	case ResponseRefused:
+		m.Rcode = dns.RcodeRefused
+	default:
+		m.Rcode = dns.RcodeSuccess
+		if r.Question[0].Qtype == dns.TypeA {
+			rr, _ := dns.NewRR(fmt.Sprintf("%s 300 IN A 0.0.0.0", r.Question[0].Name))
+			m.Answer = append(m.Answer, rr)
+		} else if r.Question[0].Qtype == dns.TypeAAAA {
+			rr, _ := dns.NewRR(fmt.Sprintf("%s 300 IN AAAA ::", r.Question[0].Name))
+			m.Answer = append(m.Answer, rr)
+		}
+	}
+
+	_ = w.WriteMsg(m)
+	e.totalQueries.Add(1)
+	e.blockedQueries.Add(1)
+	elapsed := time.Since(startTime).Milliseconds()
+	e.notifyLog(strings.TrimSuffix(r.Question[0].Name, "."), true, r.Question[0].Qtype, elapsed, appName, "", blockedBy)
+}
+
+func (e *Engine) standaloneForward(w dns.ResponseWriter, r *dns.Msg, appName string, startTime time.Time) {
+	raw, err := r.Pack()
+	if err != nil {
+		dns.HandleFailed(w, r)
+		return
+	}
+
+	respRaw, err := e.resolver.Resolve(raw)
+	if err != nil {
+		logf("DNS resolve failed standalone %s: %v", r.Question[0].Name, err)
+		dns.HandleFailed(w, r)
+		e.totalQueries.Add(1)
+		elapsed := time.Since(startTime).Milliseconds()
+		e.notifyLog(strings.TrimSuffix(r.Question[0].Name, "."), false, r.Question[0].Qtype, elapsed, appName, "", "")
+		return
+	}
+
+	var respMsg dns.Msg
+	if err := respMsg.Unpack(respRaw); err != nil {
+		dns.HandleFailed(w, r)
+		return
+	}
+
+	if isUpstreamBlocked(respRaw) {
+		e.totalQueries.Add(1)
+		e.blockedQueries.Add(1)
+		elapsed := time.Since(startTime).Milliseconds()
+		e.notifyLog(strings.TrimSuffix(r.Question[0].Name, "."), true, r.Question[0].Qtype, elapsed, appName, "", "upstream_dns")
+	} else {
+		e.totalQueries.Add(1)
+		elapsed := time.Since(startTime).Milliseconds()
+		e.notifyLog(strings.TrimSuffix(r.Question[0].Name, "."), false, r.Question[0].Qtype, elapsed, appName, "", "")
+	}
+
+	respMsg.Id = r.Id
+	_ = w.WriteMsg(&respMsg)
+}
+
+func (e *Engine) standaloneRedirect(w dns.ResponseWriter, r *dns.Msg, redirectDomain, appName string, startTime time.Time) bool {
+	ip := e.safeSearch.GetCachedIP(redirectDomain)
+	if ip == nil {
+		var err error
+		ip, err = e.resolver.ResolveARecord(redirectDomain, e.primaryDNS)
+		if err != nil {
+			return false
+		}
+		e.safeSearch.CacheIP(redirectDomain, ip)
+	}
+
+	m := new(dns.Msg)
+	m.SetReply(r)
+	m.Rcode = dns.RcodeSuccess
+
+	if r.Question[0].Qtype == dns.TypeA {
+		rr, _ := dns.NewRR(fmt.Sprintf("%s 300 IN A %s", r.Question[0].Name, ip.String()))
+		m.Answer = append(m.Answer, rr)
+	}
+
+	_ = w.WriteMsg(m)
+	e.totalQueries.Add(1)
+	elapsed := time.Since(startTime).Milliseconds()
+	e.notifyLog(strings.TrimSuffix(r.Question[0].Name, "."), false, r.Question[0].Qtype, elapsed, appName, ip.String(), "")
+	return true
+}
+
+// StartStandalone starts the engine in DNS-only standalone mode on 127.0.0.1:port
+// It bypasses TUN and directly serves incoming UDP/TCP DNS queries.
+func (e *Engine) StartStandalone(port int) error {
+	e.mu.Lock()
+
+	var oldUdp, oldTcp, oldUdp6, oldTcp6 *dns.Server
+	var oldResolver *Resolver
+
+	// If already running, capture pointers to release outside lock
+	if e.running {
+		oldUdp = e.standaloneUdp
+		e.standaloneUdp = nil
+		oldTcp = e.standaloneTcp
+		e.standaloneTcp = nil
+		oldUdp6 = e.standaloneUdp6
+		e.standaloneUdp6 = nil
+		oldTcp6 = e.standaloneTcp6
+		e.standaloneTcp6 = nil
+		oldResolver = e.resolver
+		e.resolver = nil
+		e.running = false
+	}
+
+	e.running = true
+	e.totalQueries.Store(0)
+	e.blockedQueries.Store(0)
+
+	// Since we are not using a TUN interface, we don't need a SocketProtector
+	// Root/Proxy mode traffic naturally avoids loops due to iptables owner UID matching.
+	e.resolver = NewResolver(nil)
+	e.resolver.Configure(ParseProtocol(e.protocol), e.primaryDNS, e.fallbackDNS, e.dohURL)
+	e.mu.Unlock()
+
+	// Shutdown old servers outside the lock
+	if oldUdp != nil {
+		oldUdp.Shutdown()
+	}
+	if oldTcp != nil {
+		oldTcp.Shutdown()
+	}
+	if oldUdp6 != nil {
+		oldUdp6.Shutdown()
+	}
+	if oldTcp6 != nil {
+		oldTcp6.Shutdown()
+	}
+	if oldResolver != nil {
+		oldResolver.Shutdown()
+	}
+
+	// Bind strictly to IPv4 AND IPv6 loopback separately for maximum security and proxy accuracy
+	addr4 := fmt.Sprintf("127.0.0.1:%d", port)
+	addr6 := fmt.Sprintf("[::1]:%d", port)
+
+	udpServer := &dns.Server{Addr: addr4, Net: "udp", Handler: dns.HandlerFunc(e.ServeDNS)}
+	tcpServer := &dns.Server{Addr: addr4, Net: "tcp", Handler: dns.HandlerFunc(e.ServeDNS)}
+	
+	udpServer6 := &dns.Server{Addr: addr6, Net: "udp6", Handler: dns.HandlerFunc(e.ServeDNS)}
+	tcpServer6 := &dns.Server{Addr: addr6, Net: "tcp6", Handler: dns.HandlerFunc(e.ServeDNS)}
+
+	e.mu.Lock()
+	e.standaloneUdp = udpServer
+	e.standaloneTcp = tcpServer
+	e.standaloneUdp6 = udpServer6
+	e.standaloneTcp6 = tcpServer6
+	e.mu.Unlock()
+
+	errChan := make(chan error, 4)
+
+	go func() {
+		if err := udpServer.ListenAndServe(); err != nil {
+			logf("Standalone UDP IPv4 stopped: %v", err)
+			errChan <- err
+		}
+	}()
+	go func() {
+		if err := tcpServer.ListenAndServe(); err != nil {
+			logf("Standalone TCP IPv4 stopped: %v", err)
+			errChan <- err
+		}
+	}()
+	go func() {
+		if err := udpServer6.ListenAndServe(); err != nil {
+			logf("Standalone UDP IPv6 stopped: %v", err)
+			// IPv6 might fail on v4-only kernels, ignore to prevent crashing the whole engine
+		}
+	}()
+	go func() {
+		if err := tcpServer6.ListenAndServe(); err != nil {
+			logf("Standalone TCP IPv6 stopped: %v", err)
+		}
+	}()
+
+	// Give servers a moment to bind
+	time.Sleep(100 * time.Millisecond)
+
+	// Check if IPv4 servers failed to start (critical error)
+	select {
+	case err := <-errChan:
+		return fmt.Errorf("IPv4 Server failed to start: %v", err)
+	default:
+	}
+
+	logf("Engine started in STANDALONE mode on %s and %s", addr4, addr6)
+	return nil
 }
 
 // ── MITM Proxy API ───────────────────────────────────────────────────────────

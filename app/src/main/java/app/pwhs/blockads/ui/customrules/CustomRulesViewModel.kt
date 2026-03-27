@@ -12,6 +12,7 @@ import app.pwhs.blockads.data.entities.toEntity
 import app.pwhs.blockads.data.entities.toExport
 import app.pwhs.blockads.data.repository.FilterListRepository
 import app.pwhs.blockads.service.AdBlockVpnService
+import app.pwhs.blockads.service.ServiceController
 import app.pwhs.blockads.ui.customrules.data.ExportFormat
 import app.pwhs.blockads.utils.CustomRuleParser
 import kotlinx.coroutines.Dispatchers
@@ -77,7 +78,7 @@ class CustomRulesViewModel(
                     }
                     customDnsRuleDao.insert(parsedRule)
                     reloadFilters()
-                    AdBlockVpnService.requestRestart(application.applicationContext)
+                    ServiceController.requestRestart(application.applicationContext)
                     onSuccess()
                 } else {
                     onError("Invalid rule format")
@@ -118,7 +119,7 @@ class CustomRulesViewModel(
                     if (newRulesToInsert.isNotEmpty()) {
                         customDnsRuleDao.insertAll(newRulesToInsert)
                         reloadFilters()
-                        AdBlockVpnService.requestRestart(application.applicationContext)
+                        ServiceController.requestRestart(application.applicationContext)
                         onSuccess(newRulesToInsert.size)
                     } else if (parsedRules.size > newRulesToInsert.size) {
                          // All parsed rules were duplicates
@@ -171,7 +172,7 @@ class CustomRulesViewModel(
                 if (newRulesToInsert.isNotEmpty()) {
                     customDnsRuleDao.insertAll(newRulesToInsert)
                     reloadFilters()
-                    AdBlockVpnService.requestRestart(application.applicationContext)
+                    ServiceController.requestRestart(application.applicationContext)
                     onSuccess(newRulesToInsert.size)
                 } else {
                     onError("Rules already exist")
@@ -187,7 +188,7 @@ class CustomRulesViewModel(
             try {
                 customDnsRuleDao.delete(rule)
                 reloadFilters()
-                AdBlockVpnService.requestRestart(application.applicationContext)
+                ServiceController.requestRestart(application.applicationContext)
             } catch (e: Exception) {
                 _error.value = e.message
             }
@@ -200,7 +201,7 @@ class CustomRulesViewModel(
                 val updatedRule = rule.copy(isEnabled = !rule.isEnabled)
                 customDnsRuleDao.update(updatedRule)
                 reloadFilters()
-                AdBlockVpnService.requestRestart(application.applicationContext)
+                ServiceController.requestRestart(application.applicationContext)
             } catch (e: Exception) {
                 _error.value = e.message
             }
@@ -212,7 +213,7 @@ class CustomRulesViewModel(
             try {
                 customDnsRuleDao.deleteAll()
                 reloadFilters()
-                AdBlockVpnService.requestRestart(application.applicationContext)
+                ServiceController.requestRestart(application.applicationContext)
             } catch (e: Exception) {
                 _error.value = e.message
             }

@@ -35,6 +35,24 @@ class FilterUpdateWorker(
 
     override suspend fun doWork(): Result {
         return try {
+            val wifiOnly = appPreferences.autoUpdateWifiOnly.first()
+            if (wifiOnly) {
+                val cm =
+                    applicationContext.getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+                val network = cm.activeNetwork
+                val capabilities = cm.getNetworkCapabilities(network)
+                val isUnmeteredOrWifi = capabilities != null && (
+                        capabilities.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) ||
+                                capabilities.hasTransport(android.net.NetworkCapabilities.TRANSPORT_ETHERNET) ||
+                                capabilities.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
+                        )
+
+                if (!isUnmeteredOrWifi) {
+                    Timber.d("Filter update skipped: not on unmetered/Wi-Fi (VPN metered constraint workaround). Retrying later.")
+                    return Result.retry()
+                }
+            }
+
             // Check notification preference
             val notificationType = appPreferences.autoUpdateNotification.first()
 
@@ -70,7 +88,7 @@ class FilterUpdateWorker(
             // Always reload engine in case any filters updated their binaries
             filterListRepository.loadAllEnabledFilters()
 
-            if (isAnySuccess || totalCount > 0) {
+            if (isAnySuccess) {
                 // Show notification based on preference
                 when (notificationType) {
                     AppPreferences.NOTIFICATION_NORMAL -> {

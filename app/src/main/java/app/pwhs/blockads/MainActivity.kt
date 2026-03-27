@@ -56,7 +56,7 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.RequestPermission()
     ) { _ ->
         // Proceed regardless — notification is optional but nice to have
-        requestVpnPermission()
+        continueVpnToggle()
     }
 
     override fun attachBaseContext(newBase: Context) {
@@ -183,7 +183,10 @@ class MainActivity : ComponentActivity() {
                 return
             }
         }
-        
+        continueVpnToggle()
+    }
+
+    private fun continueVpnToggle() {
         val appPrefs: AppPreferences = getKoin().get()
         lifecycleScope.launch(Dispatchers.IO) {
             val routingMode = appPrefs.routingMode.first()

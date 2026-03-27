@@ -9,6 +9,7 @@ import app.pwhs.blockads.data.entities.DnsProtocol
 import app.pwhs.blockads.data.entities.DnsProvider
 import app.pwhs.blockads.data.entities.DnsProviders
 import app.pwhs.blockads.service.AdBlockVpnService
+import app.pwhs.blockads.service.ServiceController
 import app.pwhs.blockads.R
 import app.pwhs.blockads.ui.event.UiEvent
 import app.pwhs.blockads.ui.event.toast
@@ -112,7 +113,7 @@ class DnsProviderViewModel(
                 }
             }
             appPrefs.setFallbackDns(fallbackProvider.ipAddress)
-            AdBlockVpnService.requestRestart(getApplication<Application>().applicationContext)
+            ServiceController.requestRestart(getApplication<Application>().applicationContext)
         }
     }
 
@@ -125,7 +126,7 @@ class DnsProviderViewModel(
                 return@launch
             }
             appPrefs.setFallbackDns(trimmed)
-            AdBlockVpnService.requestRestart(getApplication<Application>().applicationContext)
+            ServiceController.requestRestart(getApplication<Application>().applicationContext)
         }
     }
 
@@ -179,7 +180,7 @@ class DnsProviderViewModel(
                     appPrefs.setUpstreamDns(parsedHost)
                 }
             }
-            AdBlockVpnService.requestRestart(getApplication<Application>().applicationContext)
+            ServiceController.requestRestart(getApplication<Application>().applicationContext)
         }
     }
 }

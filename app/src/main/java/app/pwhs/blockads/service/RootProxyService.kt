@@ -50,6 +50,7 @@ class RootProxyService : Service() {
 
         const val ACTION_START = "app.pwhs.blockads.ROOT_START"
         const val ACTION_STOP = "app.pwhs.blockads.ROOT_STOP"
+        const val ACTION_RESTART = "app.pwhs.blockads.ROOT_RESTART"
 
         private val _state = kotlinx.coroutines.flow.MutableStateFlow(VpnState.STOPPED)
         val state: kotlinx.coroutines.flow.StateFlow<VpnState> = _state.asStateFlow()
@@ -77,6 +78,20 @@ class RootProxyService : Service() {
             }
             context.startService(intent)
         }
+
+        /**
+         * Request a Root Proxy restart to apply new settings/filter changes.
+         * Only restarts if the service is currently running.
+         */
+        fun requestRestart(context: Context) {
+            val s = _state.value
+            if (s == VpnState.RUNNING || s == VpnState.RESTARTING) {
+                val intent = Intent(context, RootProxyService::class.java).apply {
+                    action = ACTION_RESTART
+                }
+                context.startService(intent)
+            }
+        }
     }
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -91,6 +106,7 @@ class RootProxyService : Service() {
     private lateinit var firewallRuleDao: FirewallRuleDao
     private lateinit var appNameResolver: AppNameResolver
     private lateinit var goTunnelAdapter: GoTunnelAdapter
+    @Volatile
     private var firewallManager: FirewallManager? = null
 
     override fun onCreate() {
@@ -117,6 +133,10 @@ class RootProxyService : Service() {
             ACTION_STOP -> {
                 stopProxy()
                 return START_NOT_STICKY
+            }
+            ACTION_RESTART -> {
+                restartProxy()
+                return START_STICKY
             }
             else -> {
                 startProxy()
@@ -245,6 +265,37 @@ class RootProxyService : Service() {
         startTimestamp = 0L
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
+    }
+
+    /**
+     * Restart the Root Proxy service to apply new settings/filter changes
+     * without requiring the user to manually stop and start.
+     */
+    private fun restartProxy() {
+        if (_state.value == VpnState.RESTARTING) return
+        val s = _state.value
+        if (s != VpnState.RUNNING && s != VpnState.STARTING) return
+
+        _state.value = VpnState.RESTARTING
+        Timber.d("Restarting Root Proxy to apply new settings")
+
+        watchdogJob?.cancel()
+        stopNotificationUpdates()
+
+        serviceScope.launch(Dispatchers.IO) {
+            // Stop Go engine
+            goTunnelAdapter.stop()
+
+            // Teardown iptables
+            IptablesManager.teardownRules()
+
+            // Brief delay to let resources clean up
+            delay(1000L)
+
+            // Restart
+            _state.value = VpnState.STOPPED
+            startProxy()
+        }
     }
 
     /**

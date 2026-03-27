@@ -21,6 +21,7 @@ import app.pwhs.blockads.data.entities.SettingsBackup
 import app.pwhs.blockads.data.entities.WhitelistDomain
 import app.pwhs.blockads.data.repository.FilterListRepository
 import app.pwhs.blockads.service.AdBlockVpnService
+import app.pwhs.blockads.service.ServiceController
 import app.pwhs.blockads.ui.event.UiEvent
 import app.pwhs.blockads.ui.event.toast
 import app.pwhs.blockads.utils.CustomRuleParser
@@ -409,6 +410,6 @@ class SettingsViewModel(
     }
 
     private fun requestVpnRestart() {
-        AdBlockVpnService.requestRestart(getApplication<Application>().applicationContext)
+        ServiceController.requestRestart(getApplication<Application>().applicationContext)
     }
 }

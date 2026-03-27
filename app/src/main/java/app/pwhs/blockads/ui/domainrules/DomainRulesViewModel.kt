@@ -10,6 +10,7 @@ import app.pwhs.blockads.data.entities.CustomDnsRule
 import app.pwhs.blockads.data.entities.RuleType
 import app.pwhs.blockads.data.entities.WhitelistDomain
 import app.pwhs.blockads.service.AdBlockVpnService
+import app.pwhs.blockads.service.ServiceController
 import app.pwhs.blockads.ui.event.UiEvent
 import app.pwhs.blockads.ui.event.toast
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -99,6 +100,6 @@ class DomainRulesViewModel(
     }
 
     private fun requestVpnRestart() {
-        AdBlockVpnService.requestRestart(getApplication<Application>().applicationContext)
+        ServiceController.requestRestart(getApplication<Application>().applicationContext)
     }
 }

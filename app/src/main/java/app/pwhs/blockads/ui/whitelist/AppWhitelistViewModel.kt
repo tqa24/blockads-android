@@ -9,6 +9,7 @@ import androidx.lifecycle.application
 import androidx.lifecycle.viewModelScope
 import app.pwhs.blockads.data.datastore.AppPreferences
 import app.pwhs.blockads.service.AdBlockVpnService
+import app.pwhs.blockads.service.ServiceController
 import app.pwhs.blockads.ui.whitelist.data.AppInfoData
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -64,7 +65,7 @@ class AppWhitelistViewModel(
     fun toggleApp(packageName: String) {
         viewModelScope.launch {
             appPrefs.toggleWhitelistedApp(packageName)
-            AdBlockVpnService.requestRestart(getApplication<Application>().applicationContext)
+            ServiceController.requestRestart(getApplication<Application>().applicationContext)
         }
     }
 }

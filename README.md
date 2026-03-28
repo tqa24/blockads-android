@@ -42,7 +42,10 @@
 
 ## Features
 
-* System-wide ad blocking via DNS filtering — no root needed
+* Dual Routing Modes: System-wide ad blocking via VPN (no root needed) OR Root Proxy Mode (via iptables)
+* Privacy-first Optional Crash Reporting & Manual Local Logs Export
+* Comprehensive Onboarding Flow (Permissions, Battery Optimization, Opt-in telemetry)
+* WireGuard Profile Import & HTTPS Filtering (Beta)
 * Multiple built-in filter lists (StevenBlack, AdGuard DNS, EasyList, and more)
 * Region-aware defaults — auto-enables filters for your language
 * Real-time DNS query logs with search & filtering
@@ -119,7 +122,7 @@ improve the app.
 
 ## How It Works
 
-BlockAds creates a local VPN on your device. DNS queries are routed through it and matched against filter lists using a memory-efficient Trie data structure. Matching queries are blocked locally. All other traffic passes through normally — no data leaves your device.
+BlockAds routes DNS queries locally either through a VpnService (Vpn Mode) or via iptables redirection (Root Proxy Mode). These queries are matched against loaded filter lists using a memory-efficient Trie data structure. Matching queries are blocked locally, while all other traffic passes through normally — no data leaves your device.
 
 ---  
 

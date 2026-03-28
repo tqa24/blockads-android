@@ -522,7 +522,6 @@ Desteklenen formatlar:
     <string name="firewall_notification_text">%s uygulamasının internete erişimi engellendi</string>
     <string name="firewall_network_mobile">Mobil</string>
     <string name="firewall_network_all">Hepsi</string>
-    <string name="firewall_status_schedule"> · %1$02d:%2$02d–%3$02d:%4$02d</string>
     <string name="firewall_schedule_hour_plus">Saat +</string>
     <string name="firewall_schedule_minute_plus">Dak +</string>
     <string name="block_reason_firewall">Güvenlik Duvarı</string>
@@ -532,9 +531,7 @@ Desteklenen formatlar:
     <string name="settings_sponsor">Bize Sponsor Olun</string>
     <string name="settings_sponsor_desc">GitHub\'da BlockAds gelişimini destekleyin</string>
     <string name="settings_community">Topluluk</string>
-    <string name="settings_reddit">Reddit</string>
     <string name="settings_reddit_desc">Reddit topluluğumuza katılın</string>
-    <string name="settings_telegram">Telegram</string>
     <string name="settings_telegram_desc">Telegram sohbetimize katılın</string>
     <string name="filter_setup_active_count">%1$d aktif</string>
     <string name="copied_url">URL kopyalandı</string>

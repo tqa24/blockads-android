@@ -500,7 +500,6 @@
     <string name="firewall_notification_text">%s đã bị chặn truy cập internet</string>
     <string name="firewall_network_mobile">Di động</string>
     <string name="firewall_network_all">Tất cả</string>
-    <string name="firewall_status_schedule"> · %1$02d:%2$02d–%3$02d:%4$02d</string>
     <string name="firewall_schedule_hour_plus">Giờ +</string>
     <string name="firewall_schedule_minute_plus">Phút +</string>
     <string name="block_reason_firewall">Tường lửa</string>
@@ -511,9 +510,7 @@
     <string name="settings_sponsor">Tài trợ</string>
     <string name="settings_sponsor_desc">Hỗ trợ phát triển BlockAds trên GitHub</string>
     <string name="settings_community">Cộng đồng</string>
-    <string name="settings_reddit">Reddit</string>
     <string name="settings_reddit_desc">Tham gia cộng đồng trên Reddit</string>
-    <string name="settings_telegram">Telegram</string>
     <string name="settings_telegram_desc">Tham gia nhóm chat trên Telegram</string>
     <string name="filter_setup_active_count">%1$d active</string>
     <string name="copied_url">Đã sao chép URL</string>

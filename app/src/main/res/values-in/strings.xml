@@ -209,23 +209,18 @@
     <string name="settings_dns_protocol">Protokol DNS</string>
     <string name="settings_dns_protocol_plain">DNS Biasa</string>
     <string name="settings_doh_server_url">URL Server DoH</string>
-    <string name="settings_doh_url_placeholder" translatable="false">https://dns.google/dns-query</string>
     <string name="settings_save_doh_url">Simpan URL DoH</string>
     <string name="settings_dot_server">Server DoT (hostname atau IP)</string>
     <string name="settings_dot_server_placeholder">dns.google</string>
     <string name="settings_doq_server_url">URL Server DoQ</string>
-    <string name="settings_doq_url_placeholder" translatable="false">quic://dns.adguard-dns.com/dns-query</string>
     <string name="settings_upstream_dns">Server DNS Hulu</string>
-    <string name="settings_upstream_dns_placeholder" translatable="false">8.8.8.8</string>
     <string name="settings_fallback_dns">Server DNS Cadangan</string>
-    <string name="settings_fallback_dns_placeholder" translatable="false">1.1.1.1</string>
     <string name="settings_fallback_dns_desc">DNS Cadangan digunakan saat server DNS utama Anda gagal. Masukkan alamat IP dari server DNS cadangan.</string>
     <string name="settings_fallback_dns_short_desc">Digunakan sebagai cadangan saat DNS utama gagal</string>
     <string name="dns_error_duplicate">DNS Cadangan tidak boleh sama dengan DNS Kustom</string>
     <string name="dns_category_fallback">Cadangan</string>
     <string name="settings_fallback_dns_not_set">Tidak diatur (tanpa cadangan)</string>
     <string name="settings_custom_dns_server">Server DNS Kustom</string>
-    <string name="settings_custom_dns_placeholder" translatable="false">8.8.8.8, https://…, tls://…, quic://…</string>
     <string name="settings_custom_dns_hint">Masukkan IP untuk DNS Biasa, https:// untuk DoH, tls:// untuk DoT, atau quic:// untuk DoQ</string>
     <string name="settings_detected_plain">DNS Biasa</string>
     <string name="settings_detected_doh">DNS-over-HTTPS (DoH)</string>
@@ -236,9 +231,7 @@
     <string name="settings_save_custom_dns">Simpan DNS</string>
     <string name="settings_dns_response_type">Tipe respons DNS</string>
     <string name="settings_dns_response_type_desc">Tipe respons untuk domain yang diblokir</string>
-    <string name="dns_response_nxdomain" translatable="false">NXDOMAIN</string>
     <string name="dns_response_nxdomain_desc">Domain tidak ada (standar)</string>
-    <string name="dns_response_refused" translatable="false">REFUSED</string>
     <string name="dns_response_refused_desc">Kueri ditolak (kompatibilitas lebih baik)</string>
     <string name="dns_response_custom_ip">IP Kustom (0.0.0.0)</string>
     <string name="dns_response_custom_ip_desc">Kembalikan alamat rute nol (default)</string>
@@ -497,7 +490,6 @@
     <string name="firewall_notification_text">%s diblokir dari mengakses internet</string>
     <string name="firewall_network_mobile">Seluler</string>
     <string name="firewall_network_all">Semua</string>
-    <string name="firewall_status_schedule"> · %1$02d:%2$02d–%3$02d:%4$02d</string>
     <string name="firewall_schedule_hour_plus">Jam +</string>
     <string name="firewall_schedule_minute_plus">Mnt +</string>
     <string name="block_reason_firewall">Firewall</string>
@@ -508,9 +500,7 @@
     <string name="settings_sponsor">Sponsori Kami</string>
     <string name="settings_sponsor_desc">Dukung pengembangan BlockAds di GitHub</string>
     <string name="settings_community">Komunitas</string>
-    <string name="settings_reddit">Reddit</string>
     <string name="settings_reddit_desc">Bergabunglah dengan komunitas kami di Reddit</string>
-    <string name="settings_telegram">Telegram</string>
     <string name="settings_telegram_desc">Bergabunglah dengan obrolan kami di Telegram</string>
     <string name="filter_setup_active_count">%1$d aktif</string>
     <string name="copied_url">URL disalin</string>

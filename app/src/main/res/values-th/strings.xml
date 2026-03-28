@@ -383,7 +383,6 @@
     <string name="firewall_notification_text">%s ถูกบล็อกจากการเข้าถึงอินเทอร์เน็ต</string>
     <string name="firewall_network_mobile">มือถือ</string>
     <string name="firewall_network_all">ทั้งหมด</string>
-    <string name="firewall_status_schedule"> · %1$02d:%2$02d–%3$02d:%4$02d</string>
     <string name="firewall_schedule_hour_plus">ชั่วโมง +</string>
     <string name="firewall_schedule_minute_plus">นาที +</string>
     <string name="block_reason_firewall">ไฟร์วอลล์</string>
@@ -458,9 +457,7 @@
     <string name="settings_sponsor">สนับสนุนเรา</string>
     <string name="settings_sponsor_desc">สนับสนุนการพัฒนา BlockAds บน GitHub</string>
     <string name="settings_community">ชุมชน</string>
-    <string name="settings_reddit">Reddit</string>
     <string name="settings_reddit_desc">เข้าร่วมชุมชนของเราบน Reddit</string>
-    <string name="settings_telegram">Telegram</string>
     <string name="settings_telegram_desc">เข้าร่วมแชทของเราบน Telegram</string>
     <string name="widget_protected">ได้รับการป้องกัน</string>
     <string name="widget_unprotected">ปิด</string>

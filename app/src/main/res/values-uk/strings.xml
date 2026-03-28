@@ -491,7 +491,6 @@
     <string name="firewall_notification_text">Доступ до інтернету для %s було заблоковано</string>
     <string name="firewall_network_mobile">Мобільна мережа</string>
     <string name="firewall_network_all">Усі</string>
-    <string name="firewall_status_schedule"> · %1$02d:%2$02d–%3$02d:%4$02d</string>
     <string name="firewall_schedule_hour_plus">Год +</string>
     <string name="firewall_schedule_minute_plus">Хв +</string>
     <string name="block_reason_firewall">Брандмауер</string>
@@ -502,9 +501,7 @@
     <string name="settings_sponsor">Спонсорувати нас</string>
     <string name="settings_sponsor_desc">Підтримайте розробку BlockAds на GitHub</string>
     <string name="settings_community">Спільнота</string>
-    <string name="settings_reddit">Reddit</string>
     <string name="settings_reddit_desc">Приєднуйтесь до нашої спільноти на Reddit</string>
-    <string name="settings_telegram">Telegram</string>
     <string name="settings_telegram_desc">Приєднуйтесь до нашого чату в Telegram</string>
     <string name="filter_setup_active_count">Активних: %1$d</string>
     <string name="copied_url">URL скопійовано</string>

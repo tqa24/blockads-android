@@ -501,7 +501,6 @@
     <string name="firewall_notification_text">הגישה לאינטרנט של %s נחסמה</string>
     <string name="firewall_network_mobile">סלולרי</string>
     <string name="firewall_network_all">הכל</string>
-    <string name="firewall_status_schedule"> · %1$02d:%2$02d–%3$02d:%4$02d</string>
     <string name="firewall_schedule_hour_plus">שעה +</string>
     <string name="firewall_schedule_minute_plus">דקה +</string>
     <string name="block_reason_firewall">חומת אש</string>
@@ -512,9 +511,7 @@
     <string name="settings_sponsor">תמוך בנו (Sponsor)</string>
     <string name="settings_sponsor_desc">תמוך בפיתוח של BlockAds ב-GitHub</string>
     <string name="settings_community">קהילה</string>
-    <string name="settings_reddit">Reddit</string>
     <string name="settings_reddit_desc">הצטרף לקהילה שלנו ב-Reddit</string>
-    <string name="settings_telegram">Telegram</string>
     <string name="settings_telegram_desc">הצטרף לצ\'אט שלנו ב-Telegram</string>
     <string name="filter_setup_active_count">%1$d פעילות</string>
     <string name="copied_url">כתובת ה-URL הועתקה</string>

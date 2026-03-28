@@ -22,6 +22,8 @@ fun CommunitySection(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val redditUri = stringResource(R.string.reddit_link).toUri()
+    val telegramUri = stringResource(R.string.telegram_link).toUri()
 
     Column(modifier = modifier) {
         SectionHeader(
@@ -36,8 +38,7 @@ fun CommunitySection(
                 title = stringResource(R.string.settings_reddit),
                 desc = stringResource(R.string.settings_reddit_desc),
                 onClick = {
-                    val uri = "https://www.reddit.com/r/BlockAds/".toUri()
-                    context.startActivity(Intent(Intent.ACTION_VIEW, uri))
+                    context.startActivity(Intent(Intent.ACTION_VIEW, redditUri))
                 }
             )
             HorizontalDivider(
@@ -50,8 +51,7 @@ fun CommunitySection(
                 title = stringResource(R.string.settings_telegram),
                 desc = stringResource(R.string.settings_telegram_desc),
                 onClick = {
-                    val uri = "https://t.me/blockads_android".toUri()
-                    context.startActivity(Intent(Intent.ACTION_VIEW, uri))
+                    context.startActivity(Intent(Intent.ACTION_VIEW, telegramUri))
                 }
             )
         }

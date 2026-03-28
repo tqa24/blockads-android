@@ -373,7 +373,6 @@
     <string name="firewall_notification_text">%s의 인터넷 액세스가 차단되었습니다</string>
     <string name="firewall_network_mobile">모바일</string>
     <string name="firewall_network_all">모두</string>
-    <string name="firewall_status_schedule"> · %1$02d:%2$02d–%3$02d:%4$02d</string>
     <string name="firewall_schedule_hour_plus">시간 +</string>
     <string name="firewall_schedule_minute_plus">분 +</string>
     <string name="block_reason_firewall">방화벽</string>
@@ -445,9 +444,7 @@
     <string name="settings_sponsor">스폰서 되기</string>
     <string name="settings_sponsor_desc">GitHub에서 BlockAds 개발 지원하기</string>
     <string name="settings_community">커뮤니티</string>
-    <string name="settings_reddit">Reddit</string>
     <string name="settings_reddit_desc">Reddit 커뮤니티에 참여하세요</string>
-    <string name="settings_telegram">Telegram</string>
     <string name="settings_telegram_desc">Telegram 채팅에 참여하세요</string>
     <string name="widget_protected">보호됨</string>
     <string name="widget_unprotected">꺼짐</string>

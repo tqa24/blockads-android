@@ -373,7 +373,6 @@
     <string name="firewall_notification_text">%s 的联网请求已被拦截</string>
     <string name="firewall_network_mobile">移动数据</string>
     <string name="firewall_network_all">全部</string>
-    <string name="firewall_status_schedule"> · %1$02d:%2$02d–%3$02d:%4$02d</string>
     <string name="firewall_schedule_hour_plus">小时 +</string>
     <string name="firewall_schedule_minute_plus">分钟 +</string>
     <string name="block_reason_firewall">防火墙</string>
@@ -448,9 +447,7 @@
     <string name="settings_sponsor">赞助我们</string>
     <string name="settings_sponsor_desc">在 GitHub 上支持 BlockAds 的开发</string>
     <string name="settings_community">社区</string>
-    <string name="settings_reddit">Reddit</string>
     <string name="settings_reddit_desc">加入我们的 Reddit 社区</string>
-    <string name="settings_telegram">Telegram</string>
     <string name="settings_telegram_desc">加入我们的 Telegram 群聊</string>
     <string name="widget_protected">受保护</string>
     <string name="widget_unprotected">已关闭</string>

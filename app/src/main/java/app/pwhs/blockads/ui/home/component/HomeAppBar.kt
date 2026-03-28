@@ -46,7 +46,7 @@ fun HomeAppBar(
     onNavigateToLogScreen: () -> Unit
 ) {
     val telegramUri = stringResource(R.string.telegram_link).toUri()
-    val testBlockUri = stringResource(R.string.test_block_ads).toUri()
+    val testBlockUri = stringResource(R.string.test_block_link).toUri()
     val context = LocalContext.current
 
     TopAppBar(

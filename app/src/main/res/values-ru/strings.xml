@@ -1,3 +1,4 @@
+<?xml version='1.0' encoding='utf-8' ?>
 <resources>
     <string name="app_tagline">Интернет без рекламы</string>
     <string name="notification_channel_name">Сервис блокировки рекламы</string>

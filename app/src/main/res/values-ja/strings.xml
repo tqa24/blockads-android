@@ -1,3 +1,4 @@
+<?xml version='1.0' encoding='utf-8' ?>
 <resources>
     <string name="app_tagline">広告なしのブラウジング</string>
     <string name="notification_channel_name">広告ブロッカーサービス</string>

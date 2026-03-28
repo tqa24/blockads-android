@@ -1,3 +1,4 @@
+<?xml version='1.0' encoding='utf-8' ?>
 <resources>
     <string name="app_tagline">광고 없는 브라우징</string>
     <string name="notification_channel_name">광고 차단 서비스</string>

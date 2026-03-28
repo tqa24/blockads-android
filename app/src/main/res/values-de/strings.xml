@@ -1,3 +1,4 @@
+<?xml version='1.0' encoding='utf-8' ?>
 <resources>
     <string name="app_tagline">Werbefreies Surfen</string>
     <string name="notification_channel_name">Werbeblocker-Dienst</string>

@@ -9,6 +9,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.IBinder
+import androidx.work.OneTimeWorkRequestBuilder
 import app.pwhs.blockads.MainActivity
 import app.pwhs.blockads.R
 import kotlinx.coroutines.flow.asStateFlow
@@ -24,6 +25,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import java.util.Locale
 import app.pwhs.blockads.utils.startOfDayMillis
+import app.pwhs.blockads.worker.RootProxyResumeWorker
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -51,6 +53,7 @@ class RootProxyService : Service() {
         const val ACTION_START = "app.pwhs.blockads.ROOT_START"
         const val ACTION_STOP = "app.pwhs.blockads.ROOT_STOP"
         const val ACTION_RESTART = "app.pwhs.blockads.ROOT_RESTART"
+        const val ACTION_PAUSE_1H = "app.pwhs.blockads.ROOT_PAUSE_1H"
 
         private val _state = kotlinx.coroutines.flow.MutableStateFlow(VpnState.STOPPED)
         val state: kotlinx.coroutines.flow.StateFlow<VpnState> = _state.asStateFlow()
@@ -132,6 +135,10 @@ class RootProxyService : Service() {
         when (intent?.action) {
             ACTION_STOP -> {
                 stopProxy()
+                return START_NOT_STICKY
+            }
+            ACTION_PAUSE_1H -> {
+                pauseProxy()
                 return START_NOT_STICKY
             }
             ACTION_RESTART -> {
@@ -223,7 +230,7 @@ class RootProxyService : Service() {
         }
     }
 
-    private fun stopProxy() {
+    private fun stopProxy(showPausedNotification: Boolean = false) {
         Timber.d("Stopping Root Proxy mode")
         _state.value = VpnState.STOPPING
         watchdogJob?.cancel()
@@ -237,8 +244,30 @@ class RootProxyService : Service() {
 
         _state.value = VpnState.STOPPED
         startTimestamp = 0L
-        stopForeground(STOP_FOREGROUND_REMOVE)
+        if (showPausedNotification) {
+            stopForeground(STOP_FOREGROUND_DETACH)
+            showPausedNotification()
+        } else {
+            stopForeground(STOP_FOREGROUND_REMOVE)
+        }
         stopSelf()
+    }
+
+    private fun pauseProxy() {
+        Timber.d("Pausing Root Proxy for 1 hour")
+
+        // Schedule resume after 1 hour
+        val resumeWork = OneTimeWorkRequestBuilder<RootProxyResumeWorker>()
+            .setInitialDelay(1, java.util.concurrent.TimeUnit.HOURS)
+            .build()
+        androidx.work.WorkManager.getInstance(this).enqueueUniqueWork(
+            RootProxyResumeWorker.WORK_NAME,
+            androidx.work.ExistingWorkPolicy.REPLACE,
+            resumeWork
+        )
+
+        // Stop proxy and show paused notification
+        stopProxy(showPausedNotification = true)
     }
 
     /**
@@ -350,6 +379,14 @@ class RootProxyService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        val pauseIntent = Intent(this, RootProxyService::class.java).apply {
+            action = ACTION_PAUSE_1H
+        }
+        val pausePendingIntent = PendingIntent.getService(
+            this, 2, pauseIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
         val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             Notification.Builder(this, CHANNEL_ID)
         } else {
@@ -371,11 +408,66 @@ class RootProxyService : Service() {
             .setContentIntent(pendingIntent)
             .addAction(
                 Notification.Action.Builder(
+                    null, getString(R.string.vpn_notification_action_pause), pausePendingIntent
+                ).build()
+            )
+            .addAction(
+                Notification.Action.Builder(
                     null, getString(R.string.vpn_notification_action_stop), stopPendingIntent
                 ).build()
             )
             .setOngoing(true)
             .build()
+    }
+    
+    private fun showPausedNotification() {
+        createNotificationChannel()
+
+        val intent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            this, 0, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val startIntent = Intent(this, RootProxyService::class.java).apply {
+            action = ACTION_START
+        }
+        val startPendingIntent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            PendingIntent.getForegroundService(
+                this, 3, startIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+        } else {
+            PendingIntent.getService(
+                this, 3, startIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+        }
+
+        val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            Notification.Builder(this, CHANNEL_ID)
+        } else {
+            @Suppress("DEPRECATION")
+            Notification.Builder(this)
+        }
+
+        val notification = builder
+            .setContentTitle(getString(R.string.vpn_paused_title))
+            .setContentText(getString(R.string.vpn_paused_text))
+            .setSmallIcon(R.drawable.ic_shield_off)
+            .setOngoing(false)
+            .setContentIntent(pendingIntent)
+            .addAction(
+                Notification.Action.Builder(
+                    null, getString(R.string.vpn_stopped_action_enable), startPendingIntent
+                ).build()
+            )
+            .build()
+
+        val notificationManager = getSystemService(NotificationManager::class.java)
+        notificationManager.notify(NOTIFICATION_ID, notification)
     }
     
     private fun startNotificationUpdates() {

@@ -1,12 +1,12 @@
 Categories:
-  - Internet
-  - Security
+  - Firewall
 License: GPL-3.0-only
 AuthorName: Nguyen Quang Minh (NQM)
 AuthorEmail: nguyenquangminh570@gmail.com
 WebSite: https://blockads.pwhs.app/
 SourceCode: https://github.com/pass-with-high-score/blockads-android
 IssueTracker: https://github.com/pass-with-high-score/blockads-android/issues
+Donate: https://github.com/pass-with-high-score
 
 AutoName: BlockAds
 
@@ -14,16 +14,39 @@ RepoType: git
 Repo: https://github.com/pass-with-high-score/blockads-android.git
 
 Builds:
-  - versionName: 1.0.1
-    versionCode: 2
-    commit: ed1b050756b094f9bd2e0aec9552df8dfb7f9053
+  - versionName: 6.1.0
+    versionCode: 37
+    commit: 977d450b631dbe2665da37512e5dde48dd4bc4cb
     subdir: app
+    sudo:
+      - apt-get update
+      - apt-get install -y wget tar
+      - wget https://go.dev/dl/go1.22.12.linux-amd64.tar.gz
+      - rm -rf /usr/local/go && tar -C /usr/local -xzf go1.22.12.linux-amd64.tar.gz
     gradle:
       - yes
+    output: build/outputs/apk/release/app-universal-release-unsigned.apk
+    prebuild:
+      - rm -rf app/libs
+      - sdkmanager 'platforms;android-24'
+      - export PATH="/usr/local/go/bin:$PATH"
+      - export GOPATH="$PWD/.gopath"
+      - export PATH="$GOPATH/bin:$PATH"
+      - go version
+      - go install golang.org/x/mobile/cmd/gomobile@v0.0.0-20240404231514-09dbf07665ed
+      - gomobile init
+      - mkdir -p libs
+      - cd ../tunnel
+      - gomobile bind -target=android -androidapi 24 -trimpath -ldflags='-s -w -extldflags=-Wl,-z,max-page-size=16384'
+        -o ../app/libs/tunnel.aar .
+    scanignore:
+      - app/libs/tunnel.aar
+      - app/libs/tunnel-sources.jar
+      - app/.gopath
+    ndk: r26b
 
 AutoUpdateMode: Version
-UpdateCheckMode: Tags ^v\d+\.\d+\.\d+$
-UpdateCheckData:
-  app/build.gradle.kts|versionCode\s*=\s*(\d+)|app/build.gradle.kts|versionName\s*=\s*"([^"]+)"
-CurrentVersion: 1.0.1
-CurrentVersionCode: 2
+UpdateCheckMode: Tags
+UpdateCheckData: app/build.gradle.kts|versionCode\s=\s(\d+)|.|versionName\s=\s"([\d.]+)"
+CurrentVersion: 6.1.0
+CurrentVersionCode: 37

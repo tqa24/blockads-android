@@ -97,12 +97,12 @@ improve the app.
 
 2. Initialize gomobile (one-time setup):
    ```bash
-   go install golang.org/x/mobile/cmd/gomobile@latest
+   go install golang.org/x/mobile/cmd/gomobile@v0.0.0-20240404231514-09dbf07665ed
    export PATH=$PATH:$(go env GOPATH)/bin
    gomobile init
    ```
 
-3. **(Optional)** Build the Go tunnel AAR/JAR (with Android 15 16KB page size support):
+3. **(Required)** Build the Go tunnel AAR/JAR (with Android 15 16KB page size support):
    ```bash
    ./scripts/build_tunnel.sh
    ```

@@ -169,10 +169,15 @@ dependencies {
 }
 
 sentry {
-    org.set("nqm")
-    projectName.set("android")
-    val hasSentryConfig = file("sentry.properties").exists() || System.getenv("SENTRY_AUTH_TOKEN") != null
+    // Disable all uploads
+    includeSourceContext = false
+    autoUploadProguardMapping = false
+    autoUploadSourceContext = false
 
-    autoUploadProguardMapping.set(hasSentryConfig)
-    includeSourceContext.set(hasSentryConfig)
+    // Disable instrumentation that causes manifest/UUID changes
+    tracingInstrumentation { enabled = false }
+    autoInstallation { enabled = false }
+
+    // Disable telemetry and dependency reporting that cause non-deterministic builds
+    includeDependenciesReport = false
 }

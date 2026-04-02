@@ -12,8 +12,7 @@ AutoName: BlockAds
 
 RepoType: git
 Repo: https://github.com/pass-with-high-score/blockads-android.git
-Binaries:
-  https://github.com/pass-with-high-score/blockads-android/releases/download/v%v/app-universal-release.apk
+Binaries: https://github.com/pass-with-high-score/blockads-android/releases/download/v%v/app-universal-release.apk
 
 Builds:
   - versionName: 6.1.3
@@ -23,7 +22,8 @@ Builds:
     sudo:
       - apt-get update
       - apt-get install -y wget
-      - wget -qO- https://go.dev/dl/go1.22.2.linux-amd64.tar.gz | tar -C /usr/local -xzf -
+      - wget -qO- https://go.dev/dl/go1.22.2.linux-amd64.tar.gz | tar -C /usr/local
+        -xzf -
     gradle:
       - yes
     output: build/outputs/apk/release/app-universal-release-unsigned.apk
@@ -34,12 +34,14 @@ Builds:
       - export PATH="/usr/local/go/bin:$PATH"
       - export GOPATH="$PWD/.gopath"
       - export PATH="$GOPATH/bin:$PATH"
+      - export GOFLAGS="-buildvcs=false"
       - go version
       - go install golang.org/x/mobile/cmd/gomobile@v0.0.0-20240404231514-09dbf07665ed
       - gomobile init
       - mkdir -p libs
       - cd ../tunnel
-      - gomobile bind -target=android -androidapi 24 -trimpath -ldflags='-s -w -extldflags=-Wl,-z,max-page-size=16384' -o ../app/libs/tunnel.aar .
+      - gomobile bind -target=android -androidapi 24 -trimpath -ldflags='-s -w -extldflags=-Wl,-z,max-page-size=16384'
+        -o ../app/libs/tunnel.aar github.com/nqmgaming/blockads-tunnel
     ndk: r26b
 
 AllowedAPKSigningKeys: 229ea49584360b22a8c7e7e530cfb7e1103faa1b6ba5f32837691fb96fdcfe5a

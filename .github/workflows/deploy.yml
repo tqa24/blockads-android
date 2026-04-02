@@ -35,12 +35,6 @@ jobs:
           ruby-version: '3.2'
           bundler-cache: true
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.22.12'
-          cache: true
-
       - name: Cache Gradle
         uses: actions/cache@v4
         with:
@@ -68,14 +62,6 @@ jobs:
       - name: Create Sentry properties file
         run: |
           echo "auth.token=${{ secrets.SENTRY_AUTH_TOKEN }}" > sentry.properties    
-
-      - name: Build Go Tunnel
-        run: |
-          rm -rf app/libs
-          go install golang.org/x/mobile/cmd/gomobile@v0.0.0-20240404231514-09dbf07665ed
-          gomobile init
-          chmod +x scripts/build_tunnel.sh
-          ./scripts/build_tunnel.sh
 
       # Build & Deploy
       - name: Grant execute permission

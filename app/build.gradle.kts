@@ -170,7 +170,9 @@ dependencies {
 }
 
 sentry {
-    // Disable all uploads
+    // Disable Proguard mapping entirely — prevents sentry-debug-meta.properties
+    // from being generated (contains random UUID that breaks reproducible builds)
+    includeProguardMapping = false
     includeSourceContext = false
     autoUploadProguardMapping = false
     autoUploadSourceContext = false

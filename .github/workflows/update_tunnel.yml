@@ -48,20 +48,16 @@ jobs:
             -ldflags='-s -w -buildid= -extldflags=-Wl,-z,max-page-size=16384' \
             -o ../app/libs/tunnel.aar github.com/nqmgaming/blockads-tunnel
 
-      - name: Commit and Push changes
-        run: |
-          # Check if there are any changes (compare to git tree)
-          if git diff --quiet app/libs/tunnel.aar app/libs/tunnel-sources.jar; then
-            echo "No changes in tunnel binaries. Skipping commit."
-            exit 0
-          fi
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore: auto-update reproducible tunnel.aar from CI"
+          title: "🤖 Auto-update Reproducible tunnel.aar"
+          body: "Bản cập nhật tự động cho thư viện `tunnel.aar` được biên dịch chuẩn môi trường Linux/Ubuntu (cho Reproducible Builds)."
+          branch: "auto-update-tunnel"
+          base: "main"
+          add-paths: |
+            app/libs/tunnel.aar
+            app/libs/tunnel-sources.jar
 
-          # Config Git to commit as Github Actions bot
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          
-          git add app/libs/tunnel.aar
-          git add app/libs/tunnel-sources.jar || true
-          
-          git commit -m "chore: auto-update reproducible tunnel.aar from CI"
-          git push

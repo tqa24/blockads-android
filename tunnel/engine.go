@@ -731,7 +731,16 @@ func (e *Engine) standaloneForward(w dns.ResponseWriter, r *dns.Msg, appName str
 		return
 	}
 
-	respRaw, err := e.resolver.Resolve(raw)
+	// Grab resolver snapshot under lock to avoid nil dereference during shutdown
+	e.mu.Lock()
+	resolver := e.resolver
+	e.mu.Unlock()
+	if resolver == nil {
+		dns.HandleFailed(w, r)
+		return
+	}
+
+	respRaw, err := resolver.Resolve(raw)
 	if err != nil {
 		logf("DNS resolve failed standalone %s: %v", r.Question[0].Name, err)
 		dns.HandleFailed(w, r)
@@ -765,8 +774,16 @@ func (e *Engine) standaloneForward(w dns.ResponseWriter, r *dns.Msg, appName str
 func (e *Engine) standaloneRedirect(w dns.ResponseWriter, r *dns.Msg, redirectDomain, appName string, startTime time.Time) bool {
 	ip := e.safeSearch.GetCachedIP(redirectDomain)
 	if ip == nil {
+		// Grab resolver snapshot under lock to avoid nil dereference during shutdown
+		e.mu.Lock()
+		resolver := e.resolver
+		e.mu.Unlock()
+		if resolver == nil {
+			return false
+		}
+
 		var err error
-		ip, err = e.resolver.ResolveARecord(redirectDomain, e.primaryDNS)
+		ip, err = resolver.ResolveARecord(redirectDomain, e.primaryDNS)
 		if err != nil {
 			return false
 		}
@@ -1106,6 +1123,15 @@ func (e *Engine) IsDomainBlocked(host string) bool {
 
 // handleDNSQuery processes a single DNS query.
 func (e *Engine) handleDNSQuery(queryInfo *DNSQueryInfo) {
+	// Early exit: if engine was stopped while this goroutine was queued,
+	// don't touch any shared state — the resources may already be freed.
+	e.mu.Lock()
+	running := e.running
+	e.mu.Unlock()
+	if !running {
+		return
+	}
+
 	startTime := time.Now()
 	domain := strings.ToLower(queryInfo.Domain)
 
@@ -1171,18 +1197,28 @@ func (e *Engine) handleDNSQuery(queryInfo *DNSQueryInfo) {
 	//
 	// This eliminates trie traversal for ~90%+ of clean queries.
 
+	// Snapshot tries under lock to avoid use-after-free when Stop() closes them.
+	e.mu.Lock()
+	secBlooms := e.secBlooms
+	secTries := e.secTries
+	secTrieIDs := e.secTrieIDs
+	adBlooms := e.adBlooms
+	adTries := e.adTries
+	adTrieIDs := e.adTrieIDs
+	e.mu.Unlock()
+
 	// Security domains
-	for i, secTrie := range e.secTries {
+	for i, secTrie := range secTries {
 		if secTrie == nil { continue }
 		var secBloom *BloomFilter
-		if i < len(e.secBlooms) {
-			secBloom = e.secBlooms[i]
+		if i < len(secBlooms) {
+			secBloom = secBlooms[i]
 		}
 		if secBloom == nil || secBloom.MightContainDomainOrParent(domain) {
 			if secTrie.ContainsOrParent(domain) {
 				reason := "security"
-				if i < len(e.secTrieIDs) {
-					reason = e.secTrieIDs[i]
+				if i < len(secTrieIDs) {
+					reason = secTrieIDs[i]
 				}
 				e.handleBlockedDomain(queryInfo, reason, appName, startTime)
 				return
@@ -1191,17 +1227,17 @@ func (e *Engine) handleDNSQuery(queryInfo *DNSQueryInfo) {
 	}
 
 	// Ad domains
-	for i, adTrie := range e.adTries {
+	for i, adTrie := range adTries {
 		if adTrie == nil { continue }
 		var adBloom *BloomFilter
-		if i < len(e.adBlooms) {
-			adBloom = e.adBlooms[i]
+		if i < len(adBlooms) {
+			adBloom = adBlooms[i]
 		}
 		if adBloom == nil || adBloom.MightContainDomainOrParent(domain) {
 			if adTrie.ContainsOrParent(domain) {
 				reason := "filter_list"
-				if i < len(e.adTrieIDs) {
-					reason = e.adTrieIDs[i]
+				if i < len(adTrieIDs) {
+					reason = adTrieIDs[i]
 				}
 				e.handleBlockedDomain(queryInfo, reason, appName, startTime)
 				return
@@ -1218,9 +1254,17 @@ func (e *Engine) handleSafeSearchRedirect(queryInfo *DNSQueryInfo, redirectDomai
 	// Check cache first
 	ip := e.safeSearch.GetCachedIP(redirectDomain)
 	if ip == nil {
+		// Grab resolver snapshot under lock to avoid nil dereference during shutdown
+		e.mu.Lock()
+		resolver := e.resolver
+		e.mu.Unlock()
+		if resolver == nil {
+			return false
+		}
+
 		// Lazy resolve
 		var err error
-		ip, err = e.resolver.ResolveARecord(redirectDomain, e.primaryDNS)
+		ip, err = resolver.ResolveARecord(redirectDomain, e.primaryDNS)
 		if err != nil {
 			logf("SafeSearch resolve failed for %s: %v", redirectDomain, err)
 			return false
@@ -1282,7 +1326,16 @@ func (e *Engine) handleBlockedDomain(queryInfo *DNSQueryInfo, blockedBy, appName
 
 // handleForward forwards a DNS query to upstream and writes the response.
 func (e *Engine) handleForward(queryInfo *DNSQueryInfo, appName string, startTime time.Time) {
-	resp, err := e.resolver.Resolve(queryInfo.RawDNSPayload)
+	// Grab resolver snapshot under lock to avoid nil dereference during shutdown
+	e.mu.Lock()
+	resolver := e.resolver
+	e.mu.Unlock()
+	if resolver == nil {
+		// Engine is shutting down, drop the query silently
+		return
+	}
+
+	resp, err := resolver.Resolve(queryInfo.RawDNSPayload)
 	if err != nil {
 		logf("DNS resolve failed for %s: %v", queryInfo.Domain, err)
 		servfail := BuildServfailResponse(queryInfo)

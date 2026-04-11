@@ -255,7 +255,10 @@ fun LogEntryItem(
                             stringResource(R.string.block_reason_firewall) to MaterialTheme.colorScheme.primary
                         app.pwhs.blockads.data.repository.FilterListRepository.BLOCK_REASON_UPSTREAM_DNS, "UPSTREAM_DNS" -> 
                             stringResource(R.string.block_reason_upstream_dns) to app.pwhs.blockads.ui.theme.UpstreamDnsPurple
-                        else -> (filterNames[entry.blockedBy] ?: entry.blockedBy) to TextSecondary
+                        else -> {
+                            val firstId = entry.blockedBy.split(",").first()
+                            (filterNames[firstId] ?: entry.blockedBy) to TextSecondary
+                        }
                     }
                     
                     Box(

@@ -188,8 +188,8 @@ interface DnsLogDao {
     suspend fun getBlockedCountSync(): Int
     @Query(
         """
-        SELECT COUNT(*) FROM dns_logs WHERE isBlocked = 1 
-        AND (blockedBy = :reason 
+        SELECT COUNT(*) FROM dns_logs WHERE isBlocked = 1
+        AND (INSTR(',' || blockedBy || ',', ',' || :reason || ',') > 0
              OR blockedBy IN (SELECT CAST(id AS TEXT) FROM filter_lists WHERE category = :reason))
         """
     )
@@ -198,7 +198,7 @@ interface DnsLogDao {
     @Query(
         """
         SELECT COUNT(*) FROM dns_logs WHERE isBlocked = 1 AND timestamp > :since
-        AND (blockedBy = :reason 
+        AND (INSTR(',' || blockedBy || ',', ',' || :reason || ',') > 0
              OR blockedBy IN (SELECT CAST(id AS TEXT) FROM filter_lists WHERE category = :reason))
         """
     )

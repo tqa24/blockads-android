@@ -559,9 +559,9 @@ fun HomeScreen(
                 ) {
                     Column(modifier = Modifier.padding(vertical = 4.dp)) {
                         recentBlocked.forEach { entry ->
+                            val blockedByIds = entry.blockedBy.split(",")
                             val dotColor =
-                                if (entry.blockedBy == FilterListRepository.BLOCK_REASON_SECURITY
-                                    || securityFilterIds.contains(entry.blockedBy))
+                                if (blockedByIds.any { it == FilterListRepository.BLOCK_REASON_SECURITY || securityFilterIds.contains(it) })
                                     SecurityOrange else DangerRed
                             val recentAppIcon: Drawable? = remember(entry.packageName) {
                                 if (entry.packageName.isNotEmpty() && entry.packageName.contains(".")) {

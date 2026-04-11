@@ -611,16 +611,17 @@ func (e *Engine) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 	adTries := e.adTries
 	e.mu.Unlock()
 
+	var matchedIDs []string
+
 	for i, secTrie := range secTries {
 		if secTrie == nil { continue }
 		var secBloom *BloomFilter
 		if i < len(secBlooms) { secBloom = secBlooms[i] }
 		if secBloom == nil || secBloom.MightContainDomainOrParent(domain) {
 			if secTrie.ContainsOrParent(domain) {
-				reason := "security"
-				if i < len(e.secTrieIDs) { reason = e.secTrieIDs[i] }
-				e.standaloneBlock(w, r, reason, appName, startTime)
-				return
+				id := "security"
+				if i < len(e.secTrieIDs) { id = e.secTrieIDs[i] }
+				matchedIDs = append(matchedIDs, id)
 			}
 		}
 	}
@@ -631,12 +632,16 @@ func (e *Engine) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 		if i < len(adBlooms) { adBloom = adBlooms[i] }
 		if adBloom == nil || adBloom.MightContainDomainOrParent(domain) {
 			if adTrie.ContainsOrParent(domain) {
-				reason := "filter_list"
-				if i < len(e.adTrieIDs) { reason = e.adTrieIDs[i] }
-				e.standaloneBlock(w, r, reason, appName, startTime)
-				return
+				id := "filter_list"
+				if i < len(e.adTrieIDs) { id = e.adTrieIDs[i] }
+				matchedIDs = append(matchedIDs, id)
 			}
 		}
+	}
+
+	if len(matchedIDs) > 0 {
+		e.standaloneBlock(w, r, strings.Join(matchedIDs, ","), appName, startTime)
+		return
 	}
 
 	// 4. Fallback Kotlin DomainChecker
@@ -1207,6 +1212,9 @@ func (e *Engine) handleDNSQuery(queryInfo *DNSQueryInfo) {
 	adTrieIDs := e.adTrieIDs
 	e.mu.Unlock()
 
+	// Collect ALL matching filter IDs so every filter gets attribution in statistics
+	var matchedIDs []string
+
 	// Security domains
 	for i, secTrie := range secTries {
 		if secTrie == nil { continue }
@@ -1216,12 +1224,11 @@ func (e *Engine) handleDNSQuery(queryInfo *DNSQueryInfo) {
 		}
 		if secBloom == nil || secBloom.MightContainDomainOrParent(domain) {
 			if secTrie.ContainsOrParent(domain) {
-				reason := "security"
+				id := "security"
 				if i < len(secTrieIDs) {
-					reason = secTrieIDs[i]
+					id = secTrieIDs[i]
 				}
-				e.handleBlockedDomain(queryInfo, reason, appName, startTime)
-				return
+				matchedIDs = append(matchedIDs, id)
 			}
 		}
 	}
@@ -1235,14 +1242,18 @@ func (e *Engine) handleDNSQuery(queryInfo *DNSQueryInfo) {
 		}
 		if adBloom == nil || adBloom.MightContainDomainOrParent(domain) {
 			if adTrie.ContainsOrParent(domain) {
-				reason := "filter_list"
+				id := "filter_list"
 				if i < len(adTrieIDs) {
-					reason = adTrieIDs[i]
+					id = adTrieIDs[i]
 				}
-				e.handleBlockedDomain(queryInfo, reason, appName, startTime)
-				return
+				matchedIDs = append(matchedIDs, id)
 			}
 		}
+	}
+
+	if len(matchedIDs) > 0 {
+		e.handleBlockedDomain(queryInfo, strings.Join(matchedIDs, ","), appName, startTime)
+		return
 	}
 
 	// Forward to upstream DNS

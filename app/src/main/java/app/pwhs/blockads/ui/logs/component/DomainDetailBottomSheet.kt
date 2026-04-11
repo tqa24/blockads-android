@@ -197,7 +197,11 @@ fun DomainDetailBottomSheet(
                                 stringResource(R.string.block_reason_firewall)
                             FilterListRepository.BLOCK_REASON_UPSTREAM_DNS.uppercase() ->
                                 stringResource(R.string.block_reason_upstream_dns)
-                            else -> filterNames[entry.blockedBy] ?: entry.blockedBy
+                            else -> {
+                                val ids = entry.blockedBy.split(",")
+                                val names = ids.mapNotNull { filterNames[it] }
+                                if (names.isNotEmpty()) names.joinToString(", ") else entry.blockedBy
+                            }
                         }
                         DetailRow(
                             label = stringResource(R.string.log_detail_blocked_by),

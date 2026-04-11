@@ -49,6 +49,7 @@ fun WireGuardImportScreen(
     val isWgActive by viewModel.isWgActive.collectAsStateWithLifecycle()
     val isConfigSaved by viewModel.isConfigSaved.collectAsStateWithLifecycle()
     val splitDnsZones by viewModel.splitDnsZones.collectAsStateWithLifecycle()
+    val excludeLan by viewModel.excludeLan.collectAsStateWithLifecycle()
 
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -154,6 +155,8 @@ fun WireGuardImportScreen(
                         isSaved = isConfigSaved,
                         splitDnsZones = splitDnsZones,
                         onSplitDnsZonesChange = { viewModel.setSplitDnsZones(it) },
+                        excludeLan = excludeLan,
+                        onExcludeLanChange = { viewModel.setExcludeLan(it) },
                         onSaveAndActivate = { viewModel.saveAndActivate() },
                         onToggleWireGuard = { viewModel.toggleWireGuard() },
                         onClearWireGuard = { viewModel.clearWireGuard() },

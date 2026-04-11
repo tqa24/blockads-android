@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Dns
+import androidx.compose.material.icons.filled.Lan
 import androidx.compose.material.icons.filled.SaveAlt
 import androidx.compose.material.icons.outlined.VpnLock
 import androidx.compose.material3.Button
@@ -45,6 +46,8 @@ fun ConfigContent(
     isSaved: Boolean,
     splitDnsZones: String,
     onSplitDnsZonesChange: (String) -> Unit,
+    excludeLan: Boolean,
+    onExcludeLanChange: (Boolean) -> Unit,
     onSaveAndActivate: () -> Unit,
     onToggleWireGuard: () -> Unit,
     onClearWireGuard: () -> Unit,
@@ -209,6 +212,60 @@ fun ConfigContent(
                             modifier = Modifier.fillMaxWidth(),
                             singleLine = true,
                             shape = RoundedCornerShape(12.dp)
+                        )
+                    }
+                }
+            }
+        }
+
+        // Exclude LAN toggle
+        if (isSaved) {
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Lan,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column {
+                                Text(
+                                    text = stringResource(R.string.exclude_lan_title),
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Text(
+                                    text = stringResource(R.string.exclude_lan_description),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                        Switch(
+                            checked = excludeLan,
+                            onCheckedChange = onExcludeLanChange,
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = MaterialTheme.colorScheme.primary,
+                                checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
+                            )
                         )
                     }
                 }

@@ -49,6 +49,10 @@ class WireGuardImportViewModel(
     private val _splitDnsZones = MutableStateFlow("")
     val splitDnsZones: StateFlow<String> = _splitDnsZones.asStateFlow()
 
+    /** Exclude LAN/private IPs from WireGuard tunnel. */
+    private val _excludeLan = MutableStateFlow(false)
+    val excludeLan: StateFlow<Boolean> = _excludeLan.asStateFlow()
+
     /** One-shot UI events. */
     private val _events = MutableSharedFlow<WireGuardUiEvent>()
     val events: SharedFlow<WireGuardUiEvent> = _events.asSharedFlow()
@@ -68,8 +72,9 @@ class WireGuardImportViewModel(
                 } catch (_: Exception) { /* ignore parse errors */ }
             }
 
-            // Load split-DNS zones
+            // Load split-DNS zones and LAN exclusion
             _splitDnsZones.value = appPrefs.splitDnsZones.first()
+            _excludeLan.value = appPrefs.excludeLan.first()
         }
     }
 
@@ -167,6 +172,11 @@ class WireGuardImportViewModel(
             ServiceController.requestRestart(getApplication())
             _events.emit(WireGuardUiEvent.ConfigCleared)
         }
+    }
+
+    fun setExcludeLan(enabled: Boolean) {
+        _excludeLan.value = enabled
+        viewModelScope.launch { appPrefs.setExcludeLan(enabled) }
     }
 
     fun setSplitDnsZones(zones: String) {

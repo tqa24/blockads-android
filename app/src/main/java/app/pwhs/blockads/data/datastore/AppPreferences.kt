@@ -57,6 +57,7 @@ class AppPreferences(private val context: Context) {
         private val KEY_CRASH_REPORTING_ENABLED = booleanPreferencesKey("crash_reporting_enabled")
         private val KEY_HIDE_FROM_RECENTS = booleanPreferencesKey("hide_from_recents")
         private val KEY_SPLIT_DNS_ZONES = stringPreferencesKey("split_dns_zones")
+        private val KEY_EXCLUDE_LAN = booleanPreferencesKey("exclude_lan")
 
         const val ROUTING_MODE_DIRECT = "direct"
         const val ROUTING_MODE_WIREGUARD = "wireguard"
@@ -270,6 +271,10 @@ class AppPreferences(private val context: Context) {
 
     val splitDnsZones: Flow<String> = context.dataStore.data.map { prefs ->
         prefs[KEY_SPLIT_DNS_ZONES] ?: ""
+    }
+
+    val excludeLan: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[KEY_EXCLUDE_LAN] ?: false
     }
 
     suspend fun setVpnEnabled(enabled: Boolean) {
@@ -527,6 +532,12 @@ class AppPreferences(private val context: Context) {
     suspend fun setHideFromRecents(enabled: Boolean) {
         context.dataStore.edit { prefs ->
             prefs[KEY_HIDE_FROM_RECENTS] = enabled
+        }
+    }
+
+    suspend fun setExcludeLan(enabled: Boolean) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_EXCLUDE_LAN] = enabled
         }
     }
 

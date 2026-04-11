@@ -586,6 +586,20 @@ class AdBlockVpnService : VpnService() {
                 b.addRoute("0.0.0.0", 0)
                 b.addRoute("::", 0)
 
+                // Exclude LAN/private IP ranges so local servers remain accessible
+                val excludeLan = runBlocking { appPrefs.excludeLan.first() }
+                if (excludeLan && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    try {
+                        b.excludeRoute(android.net.IpPrefix(java.net.InetAddress.getByName("10.0.0.0"), 8))
+                        b.excludeRoute(android.net.IpPrefix(java.net.InetAddress.getByName("172.16.0.0"), 12))
+                        b.excludeRoute(android.net.IpPrefix(java.net.InetAddress.getByName("192.168.0.0"), 16))
+                        b.excludeRoute(android.net.IpPrefix(java.net.InetAddress.getByName("169.254.0.0"), 16))
+                        Timber.d("LAN excluded from WireGuard VPN routes")
+                    } catch (e: Exception) {
+                        Timber.w(e, "Failed to exclude LAN routes")
+                    }
+                }
+
                 // Use a fake local DNS address to force Android to send DNS on
                 // port 53 (plain UDP). If we use the real WireGuard DNS here
                 // (e.g., 1.1.1.1), Android may use DoT (port 853) which

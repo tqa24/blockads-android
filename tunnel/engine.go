@@ -711,7 +711,12 @@ func (e *Engine) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 // It is used by the MITM proxy to bypass Android's problematic system DNS resolver
 // when the app itself is excluded from the VPN.
 // Uses the full Resolve() pipeline (DoH/DoT/DoQ/Plain + fallback) so it works
-// regardless of the user's chosen DNS protocol.
+// regardless of the user's chosen DNS protocol. If the configured upstream is
+// unreachable (transport failure), falls back to direct UDP queries against
+// well-known public resolvers so browser passthrough still works when the
+// user's DNS provider is temporarily down. A successful DNS response with
+// no A record (NXDOMAIN / empty answer) is NOT retried — that's treated as
+// intentional filtering by the user's configured DNS.
 func (e *Engine) lookupIP(domain string) (net.IP, error) {
 	e.mu.Lock()
 	resolver := e.resolver
@@ -734,6 +739,16 @@ func (e *Engine) lookupIP(domain string) (net.IP, error) {
 	// Use the full Resolve() pipeline (primary + fallback, respects DoH/DoT/DoQ)
 	resp, err := resolver.Resolve(rawQuery)
 	if err != nil {
+		// Primary + configured fallback both failed at the transport
+		// level. Try unfiltered public DNS over plain UDP so the MITM
+		// proxy doesn't have to fall through to Go's system resolver
+		// (which is unreliable on Android for VPN-excluded processes).
+		for _, server := range []string{"1.1.1.1:53", "8.8.8.8:53"} {
+			if ip, fbErr := resolver.ResolveARecord(domain, server); fbErr == nil && ip != nil {
+				logf("lookupIP: %s resolved via public fallback %s (primary err: %v)", domain, server, err)
+				return ip, nil
+			}
+		}
 		return nil, fmt.Errorf("resolve %s: %w", domain, err)
 	}
 
@@ -1016,6 +1031,17 @@ func (e *Engine) StartMitmProxy(addr string, certDir string) string {
 	}()
 
 	return caPEM
+}
+
+// IsMitmActive returns true when the HTTPS MITM proxy is running. The
+// DNS interceptor uses this to decide whether to drop outbound UDP 443
+// (QUIC/HTTP-3) so browsers fall back to TCP where the MITM can see
+// them. Without this, Chrome negotiates HTTP/3 with Google properties
+// and bypasses the MITM proxy entirely.
+func (e *Engine) IsMitmActive() bool {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return e.mitmProxy != nil
 }
 
 // StopMitmProxy stops the MITM proxy if it is running.

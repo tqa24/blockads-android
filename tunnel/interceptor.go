@@ -80,6 +80,19 @@ func (i *DnsInterceptor) Run(tunFile *os.File) {
 			if queryInfo != nil {
 				go i.engine.handleDNSQuery(queryInfo)
 			}
+		} else if isUDP443Packet(buf, n) && i.engine.IsMitmActive() {
+			// QUIC / HTTP-3 blocking: while MITM is active, drop UDP 443
+			// so browsers fall back to TCP where the proxy can intercept.
+			// Chrome and other modern browsers prefer HTTP/3 to Google
+			// properties, and UDP passes straight through this VPN
+			// otherwise (not routed to the HTTP proxy), bypassing MITM.
+			//
+			// Scope note: this drops UDP 443 system-wide while MITM is
+			// on, not just for browsers. Apps using custom UDP-443
+			// protocols (gRPC-over-QUIC, some games) will break when
+			// HTTPS filtering is enabled — acceptable trade-off given
+			// the HTTP proxy is already system-wide on this VPN.
+			continue
 		} else {
 			// Non-DNS path → route to active outbound adapter
 			// Make a copy because buf will be reused on next iteration
@@ -109,6 +122,38 @@ func (i *DnsInterceptor) IsRunning() bool {
 // ─────────────────────────────────────────────────────────────────────────────
 // isDNSPacket — Fast check: is this a UDP packet with destination port 53?
 // ─────────────────────────────────────────────────────────────────────────────
+
+// isUDP443Packet reports whether the packet is UDP to destination port 443
+// (QUIC / HTTP-3). Uses the same fast IP-header parsing as isDNSPacket.
+func isUDP443Packet(packet []byte, length int) bool {
+	if length < ipv4HeaderSize+udpHeaderSize {
+		return false
+	}
+	version := packet[0] >> 4
+	switch version {
+	case 4:
+		if packet[9] != 17 {
+			return false
+		}
+		ihl := int(packet[0]&0x0F) * 4
+		if length < ihl+udpHeaderSize {
+			return false
+		}
+		destPort := binary.BigEndian.Uint16(packet[ihl+2 : ihl+4])
+		return destPort == 443
+	case 6:
+		if length < ipv6HeaderSize+udpHeaderSize {
+			return false
+		}
+		if packet[6] != 17 {
+			return false
+		}
+		destPort := binary.BigEndian.Uint16(packet[ipv6HeaderSize+2 : ipv6HeaderSize+4])
+		return destPort == 443
+	default:
+		return false
+	}
+}
 
 func isDNSPacket(packet []byte, length int) bool {
 	if length < ipv4HeaderSize+udpHeaderSize {

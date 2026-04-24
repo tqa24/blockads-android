@@ -2,6 +2,10 @@ package tunnel
 
 import (
 	"bufio"
+	"bytes"
+	"compress/flate"
+	"compress/gzip"
+	"compress/zlib"
 	"crypto/tls"
 	"fmt"
 	"io"
@@ -270,7 +274,11 @@ func (p *MitmProxy) handleConnect(clientConn net.Conn, req *http.Request) {
 
 // forwardDirect creates a raw TCP tunnel (no TLS interception).
 func (p *MitmProxy) forwardDirect(clientConn net.Conn, host string) {
-	dialAddr := p.resolveDialAddr(host)
+	dialAddr, resolveErr := p.resolveDialAddr(host)
+	if resolveErr != nil {
+		writeHTTPError(clientConn, 502, "Upstream DNS: unresolvable")
+		return
+	}
 
 	// Connect to the real server
 	serverConn, err := net.DialTimeout("tcp", dialAddr, dialTimeout)
@@ -292,7 +300,16 @@ func (p *MitmProxy) forwardDirect(clientConn net.Conn, host string) {
 // If the client TLS handshake fails (cert pinning), the domain is
 // automatically blacklisted for all future requests.
 func (p *MitmProxy) mitmIntercept(clientConn net.Conn, host, hostname string) {
-	dialAddr := p.resolveDialAddr(host)
+	dialAddr, resolveErr := p.resolveDialAddr(host)
+	if resolveErr != nil {
+		// DNS couldn't resolve the host. Typically means the user's
+		// upstream DNS is filtering the domain (AdGuard DNS / NextDNS /
+		// Pi-hole returning NXDOMAIN). Returning 502 cleanly is correct —
+		// we can't tunnel to an unresolvable host, and a fallback via
+		// the system resolver would fail the same way.
+		writeHTTPError(clientConn, 502, "Upstream DNS: unresolvable")
+		return
+	}
 
 	// Connect to the real server first (verify it's reachable)
 	serverConn, err := tls.DialWithDialer(
@@ -304,7 +321,9 @@ func (p *MitmProxy) mitmIntercept(clientConn net.Conn, host, hostname string) {
 		},
 	)
 	if err != nil {
-		// Real server unreachable or invalid cert → fall back to direct
+		// Dial to a resolved IP failed — the upstream is unreachable or
+		// presented an invalid cert. Fall back to a raw passthrough so
+		// the client can try to reach it directly instead of seeing 502.
 		logf("MITM: server TLS dial to %s failed, falling back to direct: %v", host, err)
 		p.forwardDirect(clientConn, host)
 		return
@@ -389,8 +408,6 @@ func (p *MitmProxy) relayHTTP(clientConn net.Conn, serverConn net.Conn, hostname
 	clientReader := bufio.NewReader(clientConn)
 	serverReader := bufio.NewReader(serverConn)
 
-	firstRequest := true // Only the first request is likely the HTML document
-
 	for {
 		// Read request from client
 		req, err := http.ReadRequest(clientReader)
@@ -433,13 +450,12 @@ func (p *MitmProxy) relayHTTP(clientConn net.Conn, serverConn net.Conn, hostname
 			continue
 		}
 
-		// Only strip Accept-Encoding for the first request in the session
-		// (typically the HTML document that needs CSS injection).
-		// Sub-resources (JS, CSS, images, fonts) can stay compressed,
+		// Strip Accept-Encoding on HTML navigations so the response body
+		// arrives uncompressed and the injector can find <head in plaintext.
+		// Subresources (JS, CSS, images, fonts) keep compression —
 		// dramatically reducing bandwidth on heavy sites.
-		if firstRequest {
+		if requestAcceptsHTML(req) {
 			req.Header.Del("Accept-Encoding")
-			firstRequest = false
 		}
 
 		if err := req.Write(serverConn); err != nil {
@@ -452,21 +468,11 @@ func (p *MitmProxy) relayHTTP(clientConn net.Conn, serverConn net.Conn, hostname
 			return
 		}
 
-		// Check if this is an HTML response that should be injected
-		contentType := resp.Header.Get("Content-Type")
-		if ShouldInjectHTML(contentType) {
-			// Wrap the body with our injecting reader
-			originalBody := resp.Body
-			resp.Body = io.NopCloser(NewInjectingReader(originalBody))
-
-			// Injection changes the body size, so we must switch to
-			// chunked transfer encoding.
-			resp.ContentLength = -1
-			resp.Header.Del("Content-Length")
-			resp.Header.Del("Content-Encoding")
-			resp.Header.Del("Transfer-Encoding")
-			resp.TransferEncoding = nil // Let Go re-derive cleanly
-			resp.Uncompressed = true   // Signal body is already decompressed
+		// If this is an HTML response, attempt injection. Decompresses
+		// gzip/deflate bodies transparently; brotli responses pass
+		// through uninjected (no stdlib decoder).
+		if ShouldInjectHTML(resp.Header.Get("Content-Type")) {
+			wrapResponseForInjection(resp)
 		}
 
 		// Write response to client
@@ -481,6 +487,70 @@ func (p *MitmProxy) relayHTTP(clientConn net.Conn, serverConn net.Conn, hostname
 			return
 		}
 	}
+}
+
+// requestAcceptsHTML returns true when the request's Accept header
+// explicitly includes text/html — i.e., the client is requesting an HTML
+// document, not a subresource. Used to decide when to strip
+// Accept-Encoding so responses arrive uncompressed for injection.
+func requestAcceptsHTML(req *http.Request) bool {
+	accept := req.Header.Get("Accept")
+	return strings.Contains(strings.ToLower(accept), "text/html")
+}
+
+// wrapResponseForInjection prepares an HTML response for in-stream <link>
+// injection. It transparently decompresses gzip/deflate bodies so the
+// injector can find <head in plaintext, strips Content-Security-Policy
+// (which would otherwise block the injected <link href="https://local.pwhs.app/...">),
+// and clears framing headers so Go re-emits the modified body as
+// chunked plaintext. If the body uses an encoding we cannot decode
+// (brotli, compress, or anything else), the function returns without
+// modifying the response and injection is skipped — the page still
+// renders correctly, just without cosmetic filtering.
+func wrapResponseForInjection(resp *http.Response) {
+	encoding := strings.ToLower(strings.TrimSpace(resp.Header.Get("Content-Encoding")))
+
+	var bodyReader io.Reader
+	switch encoding {
+	case "", "identity":
+		bodyReader = resp.Body
+	case "gzip":
+		gr, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return // malformed gzip — pass through as-is
+		}
+		bodyReader = gr
+	case "deflate":
+		// HTTP Content-Encoding: deflate is historically ambiguous: some
+		// servers send zlib-wrapped (RFC 1950), others send raw DEFLATE
+		// (RFC 1951). Try zlib first (most servers), fall back to raw
+		// flate. Buffer the body so we can re-read on fallback.
+		raw, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return
+		}
+		if zr, err := zlib.NewReader(bytes.NewReader(raw)); err == nil {
+			bodyReader = zr
+		} else {
+			bodyReader = flate.NewReader(bytes.NewReader(raw))
+		}
+	default:
+		// brotli, compress, or other unsupported encoding — pass through
+		// without injection rather than corrupt the body by stripping
+		// Content-Encoding from data we can't actually decode.
+		return
+	}
+
+	resp.Body = io.NopCloser(NewInjectingReader(bodyReader))
+	resp.ContentLength = -1
+	resp.Header.Del("Content-Length")
+	resp.Header.Del("Content-Encoding")
+	resp.Header.Del("Transfer-Encoding")
+	// CSP would block the injected <link>/<script> from the local asset host.
+	resp.Header.Del("Content-Security-Policy")
+	resp.Header.Del("Content-Security-Policy-Report-Only")
+	resp.TransferEncoding = nil
+	resp.Uncompressed = true
 }
 
 // handleHTTP handles plain HTTP requests (non-CONNECT).
@@ -499,7 +569,11 @@ func (p *MitmProxy) handleHTTP(clientConn net.Conn, req *http.Request) {
 		return
 	}
 
-	dialAddr := p.resolveDialAddr(host)
+	dialAddr, resolveErr := p.resolveDialAddr(host)
+	if resolveErr != nil {
+		writeHTTPError(clientConn, 502, "Upstream DNS: unresolvable")
+		return
+	}
 	serverConn, err := net.DialTimeout("tcp", dialAddr, dialTimeout)
 	if err != nil {
 		writeHTTPError(clientConn, 502, "Bad Gateway")
@@ -508,8 +582,10 @@ func (p *MitmProxy) handleHTTP(clientConn net.Conn, req *http.Request) {
 	defer serverConn.Close()
 	serverConn.SetDeadline(time.Now().Add(maxConnLifetime))
 
-	// Strip Accept-Encoding for injection
-	req.Header.Del("Accept-Encoding")
+	// Strip Accept-Encoding on HTML navigations so injection can find <head.
+	if requestAcceptsHTML(req) {
+		req.Header.Del("Accept-Encoding")
+	}
 
 	if err := req.Write(serverConn); err != nil {
 		return
@@ -521,16 +597,8 @@ func (p *MitmProxy) handleHTTP(clientConn net.Conn, req *http.Request) {
 		return
 	}
 
-	contentType := resp.Header.Get("Content-Type")
-	if ShouldInjectHTML(contentType) {
-		originalBody := resp.Body
-		resp.Body = io.NopCloser(NewInjectingReader(originalBody))
-		resp.ContentLength = -1
-		resp.Header.Del("Content-Length")
-		resp.Header.Del("Content-Encoding")
-		resp.Header.Del("Transfer-Encoding")
-		resp.TransferEncoding = nil
-		resp.Uncompressed = true
+	if ShouldInjectHTML(resp.Header.Get("Content-Type")) {
+		wrapResponseForInjection(resp)
 	}
 
 	resp.Write(clientConn)
@@ -539,45 +607,68 @@ func (p *MitmProxy) handleHTTP(clientConn net.Conn, req *http.Request) {
 
 // ── Utilities ────────────────────────────────────────────────────────────────
 
-// resolveDialAddr uses the Engine's DNS resolver to get the IP for the host.
-// This bypasses Android's system DNS resolver which times out when the app
-// bypasses the VPN tunnel.
-func (p *MitmProxy) resolveDialAddr(hostport string) string {
-	if p.blocker == nil {
-		return hostport
-	}
-
+// resolveDialAddr uses the Engine's DNS resolver to get the IP for the host
+// and returns a host:port string safe to hand to net.Dial.
+//
+// On Android, the Go tunnel process is excluded from the VPN via
+// addDisallowedApplication, but Android still routes DNS queries from
+// those processes through the VPN's configured DNS on many devices —
+// which can't be reached from a socket that bypasses the VPN. The result
+// is that Go's built-in net.DialTimeout("tcp", "hostname:443") returns
+// "no such host" even for popular domains. To avoid that failure mode
+// this function refuses to return a bare hostname: if the internal
+// resolver cannot resolve the host, it returns an error instead of
+// letting Go fall through to its broken system resolver. Callers are
+// expected to surface the error to the HTTP client as a 502.
+func (p *MitmProxy) resolveDialAddr(hostport string) (string, error) {
 	host, port, err := net.SplitHostPort(hostport)
 	if err != nil {
-		return hostport // Fallback if no port
+		return hostport, nil // no port; let the dialer handle it
 	}
 
-	// Skip resolving if it's already an IP address
+	// Already a literal IP → no DNS needed.
 	if net.ParseIP(host) != nil {
-		return hostport
+		return hostport, nil
+	}
+
+	if p.blocker == nil {
+		// No internal resolver available — fall through to the dialer
+		// (only used in tests; production always wires a blocker).
+		return hostport, nil
 	}
 
 	resolvedIP, err := p.blocker.lookupIP(host)
-	if err == nil && resolvedIP != nil {
-		return net.JoinHostPort(resolvedIP.String(), port)
+	if err != nil || resolvedIP == nil {
+		return "", fmt.Errorf("resolve %s: %w", host, err)
 	}
-
-	return hostport
+	return net.JoinHostPort(resolvedIP.String(), port), nil
 }
 
 // bidirectionalCopy copies data between two connections in both directions.
+// It waits for BOTH directions to finish before returning. When one side
+// EOFs, the corresponding half of the other connection is closed (TCP
+// half-close) so the peer can drain its remaining data before the caller's
+// deferred Close() runs. Without this, downloads truncate and TLS sessions
+// reset mid-stream on direct passthrough traffic.
 func bidirectionalCopy(a, b net.Conn) {
 	done := make(chan struct{}, 2)
 
 	go func() {
 		io.Copy(b, a)
+		if tcp, ok := b.(interface{ CloseWrite() error }); ok {
+			tcp.CloseWrite()
+		}
 		done <- struct{}{}
 	}()
 	go func() {
 		io.Copy(a, b)
+		if tcp, ok := a.(interface{ CloseWrite() error }); ok {
+			tcp.CloseWrite()
+		}
 		done <- struct{}{}
 	}()
 
+	<-done
 	<-done
 }
 

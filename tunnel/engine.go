@@ -101,8 +101,17 @@ type Engine struct {
 	// Split-DNS zones (comma-separated, set from Kotlin)
 	splitZones string
 
-	// MITM Proxy
+	// MITM Proxy (legacy CONNECT-based model; superseded by tcpStack when enabled)
 	mitmProxy *MitmProxy
+
+	// Userspace TCP/IP stack (AdGuard-style refactor). Optional; present
+	// only when the new per-app flow model is enabled.
+	tcpStack *TcpIpStack
+
+	// UID resolver — supplied by Kotlin. When nil, flow-level UID lookup
+	// falls back to UIDUnknown. Stored on the engine so both the stack
+	// (once created) and any future consumer can pull from one place.
+	uidResolver UIDResolver
 
 	// Standalone Servers
 	standaloneUdp *dns.Server
@@ -1031,6 +1040,22 @@ func (e *Engine) StartMitmProxy(addr string, certDir string) string {
 	}()
 
 	return caPEM
+}
+
+// SetUIDResolver registers the Kotlin-implemented resolver used to look
+// up the owning app UID for each TCP/UDP flow terminated by the
+// userspace TCP/IP stack. Typically wired once at VPN start.
+//
+// Passing nil clears the resolver; flows will then report UIDUnknown.
+func (e *Engine) SetUIDResolver(r UIDResolver) {
+	e.mu.Lock()
+	e.uidResolver = r
+	stack := e.tcpStack
+	e.mu.Unlock()
+
+	if stack != nil {
+		stack.SetUIDResolver(r)
+	}
 }
 
 // IsMitmActive returns true when the HTTPS MITM proxy is running. The

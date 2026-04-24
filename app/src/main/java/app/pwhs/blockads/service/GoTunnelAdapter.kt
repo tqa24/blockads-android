@@ -1,6 +1,9 @@
 package app.pwhs.blockads.service
 
 import android.content.Context
+import android.net.ConnectivityManager
+import android.os.Build
+import android.system.OsConstants
 import app.pwhs.blockads.data.dao.DnsLogDao
 import app.pwhs.blockads.data.entities.DnsLogEntry
 import app.pwhs.blockads.data.repository.FilterListRepository
@@ -16,6 +19,9 @@ import tunnel.AppResolver
 import tunnel.DomainChecker
 import tunnel.FirewallChecker
 import tunnel.SocketProtector
+import tunnel.UIDResolver
+import java.net.InetAddress
+import java.net.InetSocketAddress
 
 /**
  * Bridge between Android VpnService and the Go DNS tunnel engine.
@@ -96,6 +102,43 @@ class GoTunnelAdapter(
 
             override fun hasCustomRule(domain: String): Long {
                 return filterRepo.hasCustomRule(domain)
+            }
+        })
+    }
+
+    /**
+     * Set up the UID resolver used by the userspace TCP/IP stack
+     * (HTTPS filtering refactor, Phase B). For each terminated TCP/UDP
+     * flow the stack calls [resolveUID] with the 5-tuple and expects
+     * back the UID of the owning app, so downstream code can scope MITM
+     * decisions per-app.
+     *
+     * Uses the official [ConnectivityManager.getConnectionOwnerUid] API
+     * on Android 10+ (API 29+). On older devices the API is missing
+     * and /proc/net/{tcp,udp} is SELinux-blocked, so we return
+     * UIDUnknown (-1) and the stack treats the flow conservatively.
+     */
+    private fun setupUidResolver() {
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+        if (cm == null || Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            // No resolver available — stack will see UIDUnknown for every flow.
+            Timber.d("UID resolver unavailable (API<29 or no ConnectivityManager)")
+            return
+        }
+        engine.setUIDResolver(UIDResolver { protocol, localIP, localPort, remoteIP, remotePort ->
+            try {
+                val proto = when (protocol.toInt()) {
+                    6 -> OsConstants.IPPROTO_TCP
+                    17 -> OsConstants.IPPROTO_UDP
+                    else -> return@UIDResolver -1L
+                }
+                val local = InetSocketAddress(InetAddress.getByName(localIP), localPort.toInt())
+                val remote = InetSocketAddress(InetAddress.getByName(remoteIP), remotePort.toInt())
+                cm.getConnectionOwnerUid(proto, local, remote).toLong()
+            } catch (e: Exception) {
+                // Race against socket teardown or invalid input — return
+                // UIDUnknown so the stack can fall back gracefully.
+                -1L
             }
         })
     }
@@ -225,6 +268,7 @@ class GoTunnelAdapter(
         setupDomainChecker()
         setupFirewallChecker()
         setupLogCallback()
+        setupUidResolver()
 
         // Give Go the paths to the Mmap logs so it can read them natively for max speed
         updateTries()
@@ -257,6 +301,7 @@ class GoTunnelAdapter(
         setupDomainChecker()
         setupFirewallChecker()
         setupLogCallback()
+        setupUidResolver()
 
         updateTries()
         updateCosmeticRules()

@@ -2,7 +2,6 @@ package tunnel
 
 import (
 	"fmt"
-	"net"
 	"sync"
 	"sync/atomic"
 
@@ -61,6 +60,7 @@ type TcpIpStack struct {
 
 	tcpHandler TcpFlowHandler
 	udpHandler UdpFlowHandler
+	uidr       UIDResolver
 
 	// stats
 	tcpFlows atomic.Int64
@@ -88,6 +88,15 @@ func (s *TcpIpStack) SetUdpHandler(h UdpFlowHandler) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.udpHandler = h
+}
+
+// SetUIDResolver registers the resolver used to look up the owning app
+// UID for each flow. May be nil (falls back to UIDUnknown for every
+// flow). Typically wired from Kotlin via Engine.SetUIDResolver.
+func (s *TcpIpStack) SetUIDResolver(r UIDResolver) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.uidr = r
 }
 
 // Start opens the TUN fd, constructs the gVisor stack, and begins
@@ -173,14 +182,16 @@ func (s *TcpIpStack) HandleTCP(conn adapter.TCPConn) {
 
 	s.mu.Lock()
 	h := s.tcpHandler
+	uidr := s.uidr
 	s.mu.Unlock()
 
+	flow := tcpFlowID(conn)
+	uid := resolveFlowUID(uidr, ProtocolTCP, flow)
+
 	if h == nil {
-		// Phase A default: log the 5-tuple, drop the connection.
-		id := conn.ID()
-		logf("TcpIpStack: TCP %s:%d → %s:%d (no handler, dropping)",
-			addrToString(id.LocalAddress.AsSlice()), id.LocalPort,
-			addrToString(id.RemoteAddress.AsSlice()), id.RemotePort)
+		// Phase A/B default: log the 5-tuple + UID, drop the connection.
+		logf("TcpIpStack: TCP uid=%d %s:%d → %s:%d (no handler, dropping)",
+			uid, flow.appIP, flow.appPort, flow.serverIP, flow.serverPort)
 		_ = conn.Close()
 		return
 	}
@@ -193,27 +204,19 @@ func (s *TcpIpStack) HandleUDP(conn adapter.UDPConn) {
 
 	s.mu.Lock()
 	h := s.udpHandler
+	uidr := s.uidr
 	s.mu.Unlock()
 
+	flow := udpFlowID(conn)
+	uid := resolveFlowUID(uidr, ProtocolUDP, flow)
+
 	if h == nil {
-		id := conn.ID()
-		logf("TcpIpStack: UDP %s:%d → %s:%d (no handler, dropping)",
-			addrToString(id.LocalAddress.AsSlice()), id.LocalPort,
-			addrToString(id.RemoteAddress.AsSlice()), id.RemotePort)
+		logf("TcpIpStack: UDP uid=%d %s:%d → %s:%d (no handler, dropping)",
+			uid, flow.appIP, flow.appPort, flow.serverIP, flow.serverPort)
 		_ = conn.Close()
 		return
 	}
 	h(conn)
-}
-
-// addrToString renders a gVisor address slice as a human-readable IP
-// string (v4 or v6). Used for log lines only.
-func addrToString(b []byte) string {
-	ip := net.IP(b)
-	if v4 := ip.To4(); v4 != nil {
-		return v4.String()
-	}
-	return ip.String()
 }
 
 // Compile-time assertion that TcpIpStack implements the tun2socks

@@ -68,13 +68,13 @@ func newMitmTcpHandler(
 		// are local services (LAN printers, router admin pages) that
 		// often have self-signed certs or none at all.
 		if isLoopbackOrInternal(flow.serverIP.String()) {
-			relayDirectFromFlow(conn, flow, protectFn)
+			relayDirectFromFlow(conn, flow, blocker, protectFn)
 			return
 		}
 
 		// Gate 1 — only attempt MITM on HTTP/HTTPS well-known ports.
 		if flow.serverPort != 443 && flow.serverPort != 80 {
-			relayDirectFromFlow(conn, flow, protectFn)
+			relayDirectFromFlow(conn, flow, blocker, protectFn)
 			return
 		}
 
@@ -83,7 +83,7 @@ func newMitmTcpHandler(
 		// unknown (API < 29, resolver failure), err on the safe side:
 		// passthrough rather than MITM an unknown app.
 		if filter.HasAllowedUIDs() && (uid == UIDUnknown || !filter.IsUIDAllowed(uid)) {
-			relayDirectFromFlow(conn, flow, protectFn)
+			relayDirectFromFlow(conn, flow, blocker, protectFn)
 			return
 		}
 
@@ -104,7 +104,7 @@ func newMitmTcpHandler(
 		} else {
 			// Unknown protocol on 443/80 — probably something proxied
 			// through these ports that isn't TLS or HTTP. Passthrough.
-			relayDirectPeeked(conn, peekedReader, flow, protectFn)
+			relayDirectPeeked(conn, peekedReader, flow, "", blocker, protectFn)
 			return
 		}
 
@@ -125,7 +125,7 @@ func newMitmTcpHandler(
 		// Gate 5 — sensitive / cert-pinned domain → passthrough so the
 		// client's own TLS validation succeeds.
 		if !filter.IsInterceptionAllowed(hostname) {
-			relayDirectPeeked(conn, peekedReader, flow, protectFn)
+			relayDirectPeeked(conn, peekedReader, flow, hostname, blocker, protectFn)
 			return
 		}
 
@@ -349,16 +349,47 @@ func parseHTTPHost(b []byte) string {
 
 // ── Direct passthrough helpers ───────────────────────────────────────────────
 
-// relayDirectFromFlow dials the flow's real destination and pipes
-// bytes bidirectionally. No peek replay — used for gates that trigger
-// before any read.
-func relayDirectFromFlow(clientConn net.Conn, flow flowID, protectFn func(fd int) bool) {
-	dst := net.JoinHostPort(flow.serverIP.String(), intToStr(flow.serverPort))
+// dialUpstream dials the flow's destination with socket protection,
+// falling back to an IPv4 resolution of the hostname when the
+// direct-IP dial fails. The common failure mode this rescues: Chrome
+// resolves a dual-stack host (YouTube, Google, etc.) to IPv6, Android
+// delivers the v6 packet to our TUN, the stack terminates with a v6
+// serverIP, and the Go process's underlying network has no v6 route
+// so dial returns "no route to host". Without the fallback the stack
+// would RST the client, surfacing as ERR_CONNECTION_REFUSED.
+//
+// hostname may be "" (e.g., gates that trigger before SNI is known);
+// in that case only the direct-IP dial is attempted.
+func dialUpstream(flow flowID, hostname string, blocker adBlockChecker, protectFn func(fd int) bool) (net.Conn, error) {
 	dialer := &net.Dialer{
 		Timeout: flowDialTimeout,
 		Control: protectedControl(protectFn),
 	}
-	remote, err := dialer.Dial("tcp", dst)
+	dst := net.JoinHostPort(flow.serverIP.String(), intToStr(flow.serverPort))
+	conn, err := dialer.Dial("tcp", dst)
+	if err == nil {
+		return conn, nil
+	}
+
+	// Direct-IP dial failed. Try the hostname-resolved-to-IPv4 path.
+	if hostname != "" && blocker != nil && flow.serverIP.To4() == nil {
+		if ip, lerr := blocker.lookupIP(hostname); lerr == nil && ip != nil {
+			alt := net.JoinHostPort(ip.String(), intToStr(flow.serverPort))
+			if altConn, aerr := dialer.Dial("tcp", alt); aerr == nil {
+				logf("[TcpStack] v6 dial to %s failed (%v); fell back to v4 %s", dst, err, alt)
+				return altConn, nil
+			}
+		}
+	}
+	logf("[TcpStack] upstream dial %s failed: %v", dst, err)
+	return nil, err
+}
+
+// relayDirectFromFlow dials the flow's real destination and pipes
+// bytes bidirectionally. No peek replay — used for gates that trigger
+// before any read.
+func relayDirectFromFlow(clientConn net.Conn, flow flowID, blocker adBlockChecker, protectFn func(fd int) bool) {
+	remote, err := dialUpstream(flow, "", blocker, protectFn)
 	if err != nil {
 		return
 	}
@@ -371,14 +402,11 @@ func relayDirectFromFlow(clientConn net.Conn, flow flowID, protectFn func(fd int
 
 // relayDirectPeeked dials the destination and writes the peeked bytes
 // to it first, then pipes bidirectionally. Used after peek+classify
-// when the classifier decides not to MITM.
-func relayDirectPeeked(clientConn net.Conn, clientReader io.Reader, flow flowID, protectFn func(fd int) bool) {
-	dst := net.JoinHostPort(flow.serverIP.String(), intToStr(flow.serverPort))
-	dialer := &net.Dialer{
-		Timeout: flowDialTimeout,
-		Control: protectedControl(protectFn),
-	}
-	remote, err := dialer.Dial("tcp", dst)
+// when the classifier decides not to MITM. hostname is the SNI / Host
+// (may be "") and enables IPv6→IPv4 fallback when the direct-IP dial
+// fails.
+func relayDirectPeeked(clientConn net.Conn, clientReader io.Reader, flow flowID, hostname string, blocker adBlockChecker, protectFn func(fd int) bool) {
+	remote, err := dialUpstream(flow, hostname, blocker, protectFn)
 	if err != nil {
 		return
 	}
@@ -474,13 +502,10 @@ func mitmTLSFlow(
 	protectFn func(fd int) bool,
 ) {
 	// Dial the real server first so cert pinning checks catch obvious
-	// problems before we commit to MITM.
-	serverAddr := net.JoinHostPort(flow.serverIP.String(), intToStr(flow.serverPort))
-	dialer := &net.Dialer{
-		Timeout: dialTimeout,
-		Control: protectedControl(protectFn),
-	}
-	rawServer, err := dialer.Dial("tcp", serverAddr)
+	// problems before we commit to MITM. Uses the v6→v4 fallback so
+	// dual-stack hosts still connect when the Go process has no v6
+	// route on the underlying network.
+	rawServer, err := dialUpstream(flow, hostname, blocker, protectFn)
 	if err != nil {
 		return
 	}
@@ -493,7 +518,7 @@ func mitmTLSFlow(
 		// Upstream cert failure → fall back to raw passthrough with
 		// replay so the client's own TLS validation can surface a
 		// meaningful error (or succeed).
-		relayDirectPeeked(clientConn, clientReader, flow, protectFn)
+		relayDirectPeeked(clientConn, clientReader, flow, hostname, blocker, protectFn)
 		return
 	}
 	defer serverConn.Close()
@@ -531,12 +556,7 @@ func mitmHTTPFlow(
 	flow flowID,
 	protectFn func(fd int) bool,
 ) {
-	serverAddr := net.JoinHostPort(flow.serverIP.String(), intToStr(flow.serverPort))
-	dialer := &net.Dialer{
-		Timeout: dialTimeout,
-		Control: protectedControl(protectFn),
-	}
-	serverConn, err := dialer.Dial("tcp", serverAddr)
+	serverConn, err := dialUpstream(flow, hostname, blocker, protectFn)
 	if err != nil {
 		return
 	}

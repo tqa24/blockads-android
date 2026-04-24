@@ -101,11 +101,7 @@ type Engine struct {
 	// Split-DNS zones (comma-separated, set from Kotlin)
 	splitZones string
 
-	// MITM Proxy (legacy CONNECT-based model; superseded by tcpStack when enabled)
-	mitmProxy *MitmProxy
-
-	// Userspace TCP/IP stack (AdGuard-style refactor). Optional; present
-	// only when the new per-app flow model is enabled.
+	// Userspace TCP/IP stack (AdGuard-style model — Phase E).
 	//
 	// tcpStackPipe uses atomic.Pointer because the DnsInterceptor hot
 	// path reads it without holding e.mu — racing with Stop would be a
@@ -491,11 +487,7 @@ func (e *Engine) Stop() {
 		e.router.Stop()
 	}
 
-	// Grab MITM proxy reference and clear it while locked
-	proxy := e.mitmProxy
-	e.mitmProxy = nil
-
-	// Tear down TCP/IP stack (parallel mode), if running.
+	// Tear down TCP/IP stack, if running.
 	stack := e.tcpStack
 	e.tcpStack = nil
 	pipe := e.tcpStackPipe.Swap(nil)
@@ -570,10 +562,6 @@ func (e *Engine) Stop() {
 	}
 	if oldResolver != nil {
 		oldResolver.Shutdown()
-	}
-	// Stop proxy OUTSIDE the lock (proxy.Stop() may block briefly)
-	if proxy != nil {
-		proxy.Stop()
 	}
 	// Tear down the TCP/IP stack outside the lock — Stop() blocks on
 	// dispatcher goroutines. Close the pipe first so the outbound
@@ -1036,56 +1024,11 @@ func (e *Engine) StartStandalone(port int) error {
 	return nil
 }
 
-// ── MITM Proxy API ───────────────────────────────────────────────────────────
-// gomobile-compatible methods for controlling the HTTPS MITM cosmetic filter.
-
-// StartMitmProxy starts the local HTTPS MITM proxy on the given address
-// (e.g., "127.0.0.1:8080"). certDir is the persistent directory for the
-// Root CA files (e.g., Android's getFilesDir()). Returns the PEM-encoded
-// Root CA certificate that the user must install on their Android device.
-//
-// Returns empty string on error (check logs).
-func (e *Engine) StartMitmProxy(addr string, certDir string) string {
-	e.mu.Lock()
-	if e.mitmProxy != nil {
-		e.mu.Unlock()
-		logf("MITM Proxy already running")
-		return e.mitmProxy.GetCACertPEM()
-	}
-
-	proxy, err := NewMitmProxy(certDir)
-	if err != nil {
-		e.mu.Unlock()
-		logf("Failed to create MITM proxy: %v", err)
-		return ""
-	}
-	// ── Wire ad-block engine into proxy for Gate 1 blocking ──
-	proxy.setAdBlockChecker(e)
-	e.mitmProxy = proxy
-	e.mu.Unlock()
-
-	caPEM := proxy.GetCACertPEM()
-	logf("MITM Proxy: CA cert generated (%d bytes)", len(caPEM))
-
-	// Bind the listener SYNCHRONOUSLY so the port is open before we return.
-	// This guarantees the VPN can safely route traffic to this address.
-	if err := proxy.Listen(addr); err != nil {
-		e.mu.Lock()
-		e.mitmProxy = nil
-		e.mu.Unlock()
-		logf("MITM Proxy listen error: %v", err)
-		return ""
-	}
-
-	// Accept loop runs in background (Serve() blocks)
-	go func() {
-		if err := proxy.Serve(); err != nil {
-			logf("MITM Proxy serve error: %v", err)
-		}
-	}()
-
-	return caPEM
-}
+// ── HTTPS MITM API ───────────────────────────────────────────────────────────
+// gomobile-compatible methods for controlling HTTPS MITM filtering.
+// Historically a CONNECT-based HTTP proxy on 127.0.0.1:8080; since
+// Phase E the handler is attached to the userspace TCP/IP stack
+// (StartStackMitm + SetUseTcpStack).
 
 // StartStackMitm initialises MITM state for the userspace TCP/IP
 // stack path. Call this in addition to SetUseTcpStack(true) to have
@@ -1128,14 +1071,15 @@ func (e *Engine) StopStackMitm() {
 	e.mu.Unlock()
 }
 
-// SetUseTcpStack toggles the experimental userspace TCP/IP stack.
-// When true, the DnsInterceptor redirects non-DNS packets into the
-// stack for per-flow processing (Phase C: direct dial with socket
-// protection; Phase D: MITM for HTTPS). When false (default), blockads
-// uses the legacy path (VPN HTTP proxy + Router).
+// SetUseTcpStack toggles whether non-DNS packets are routed into the
+// userspace TCP/IP stack. When true (recommended for HTTPS filtering),
+// the DnsInterceptor redirects non-DNS packets into the stack for
+// per-flow processing (direct dial or MITM depending on whether
+// StartStackMitm was called). When false, non-DNS packets go through
+// the Router → outbound adapter path for DNS-only or WireGuard use.
 //
-// The flag must be set before Engine.Start for the stack to be wired.
-// Runtime toggling after Start is not supported in Phase C.
+// The flag must be set before Engine.Start. Runtime toggling after
+// Start is not supported.
 func (e *Engine) SetUseTcpStack(enabled bool) {
 	e.useTcpStack.Store(enabled)
 }
@@ -1234,49 +1178,29 @@ func (e *Engine) runTcpStackOutboundWriter(p *packetPipe) {
 // the userspace stack.
 const defaultTunMTU = 1500
 
-// IsMitmActive returns true when the HTTPS MITM proxy is running. The
-// DNS interceptor uses this to decide whether to drop outbound UDP 443
-// (QUIC/HTTP-3) so browsers fall back to TCP where the MITM can see
-// them. Without this, Chrome negotiates HTTP/3 with Google properties
-// and bypasses the MITM proxy entirely.
+// IsMitmActive returns true when the HTTPS MITM filter is active
+// (stack handler registered with cert manager + filter).
 func (e *Engine) IsMitmActive() bool {
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	return e.mitmProxy != nil
+	return e.stackCertMgr != nil
 }
 
-// StopMitmProxy stops the MITM proxy if it is running.
-func (e *Engine) StopMitmProxy() {
-	e.mu.Lock()
-	proxy := e.mitmProxy
-	e.mitmProxy = nil
-	e.mu.Unlock()
-
-	if proxy != nil {
-		proxy.Stop()
-	}
-}
-
-// GetMitmCACert returns the PEM-encoded Root CA certificate.
-// certDir is the persistent directory where the CA files are stored.
-// If the proxy is running in-memory, it returns its cert. Otherwise it reads from disk.
-// Returns empty string if no CA cert exists.
+// GetMitmCACert returns the PEM-encoded Root CA certificate. Reads
+// from disk at certDir; stack MITM uses the same ca.crt file.
 func (e *Engine) GetMitmCACert(certDir string) string {
 	e.mu.Lock()
-	proxy := e.mitmProxy
+	certMgr := e.stackCertMgr
 	e.mu.Unlock()
 
-	// If proxy is active, it has the cert in memory
-	if proxy != nil {
-		return proxy.GetCACertPEM()
+	if certMgr != nil {
+		return certMgr.GetCACertPEM()
 	}
 
-	// Proxy not running in this instance, check disk directly
 	certPath := filepath.Join(certDir, caCertFile)
 	if !fileExists(certPath) {
 		return ""
 	}
-
 	data, err := os.ReadFile(certPath)
 	if err != nil {
 		logf("Failed to read persistent CA cert: %v", err)
@@ -1297,12 +1221,11 @@ func (e *Engine) GetMitmCACert(certDir string) string {
 //	engine.setMitmAllowedUIDs(browserUids.joinToString(","))
 func (e *Engine) SetMitmAllowedUIDs(uidsCsv string) {
 	e.mu.Lock()
-	proxy := e.mitmProxy
 	stackFilter := e.stackMitmFilter
 	e.mu.Unlock()
 
-	if proxy == nil && stackFilter == nil {
-		logf("MITM: SetAllowedUIDs called but neither legacy proxy nor stack MITM is active")
+	if stackFilter == nil {
+		logf("MITM: SetAllowedUIDs called but stack MITM is not active")
 		return
 	}
 
@@ -1322,15 +1245,7 @@ func (e *Engine) SetMitmAllowedUIDs(uidsCsv string) {
 			uids = append(uids, uid)
 		}
 	}
-
-	// Apply to both paths so a user running parallel mode sees
-	// consistent behaviour regardless of which handler fires.
-	if proxy != nil {
-		proxy.GetFilter().SetAllowedUIDs(uids)
-	}
-	if stackFilter != nil {
-		stackFilter.SetAllowedUIDs(uids)
-	}
+	stackFilter.SetAllowedUIDs(uids)
 }
 
 // SetCosmeticCSS sets the minified CSS string to inject into HTML responses

@@ -650,6 +650,17 @@ class AdBlockVpnService : VpnService() {
                             Timber.w(e, "Failed to exclude LAN routes")
                         }
                     }
+
+                    // Re-add explicit /32 routes for the fake DNS
+                    // servers AFTER the LAN exclude. 10.0.0.1 falls
+                    // inside the 10.0.0.0/8 exclude above; without
+                    // this override DNS would go out the underlying
+                    // network and never reach our interceptor (Chrome
+                    // surfaces it as DNS_PROBE_STARTED). A more-
+                    // specific addRoute wins over an excludeRoute on
+                    // VpnService.Builder regardless of call order.
+                    b.addRoute("10.0.0.1", 32)
+                    b.addRoute("fd00::1", 128)
                 } else {
                     // DNS-only routes (legacy minimal mode).
                     b.addRoute("10.0.0.1", 32)

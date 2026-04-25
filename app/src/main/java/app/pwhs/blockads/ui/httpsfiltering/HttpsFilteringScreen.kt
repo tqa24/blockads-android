@@ -68,9 +68,19 @@ fun HttpsFilteringScreen(
 
     val snackbarHostState = remember { SnackbarHostState() }
 
+    // Re-verify when the user returns from Android's Security Settings.
+    // They likely just installed (or removed) the certificate.
     val settingsLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
-    ) { }
+    ) {
+        viewModel.verifyCert()
+    }
+
+    // Auto-verify on first composition when filtering is on, so users
+    // see the install status without having to tap the button.
+    LaunchedEffect(isEnabled) {
+        if (isEnabled) viewModel.verifyCert()
+    }
 
     // Collect one-shot events
     LaunchedEffect(Unit) {

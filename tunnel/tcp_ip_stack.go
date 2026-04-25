@@ -177,7 +177,7 @@ func (s *TcpIpStack) UdpFlowCount() int64 { return s.udpFlows.Load() }
 // HandleTCP implements adapter.TransportHandler. Invoked by gVisor for
 // every terminated TCP connection.
 func (s *TcpIpStack) HandleTCP(conn adapter.TCPConn) {
-	s.tcpFlows.Add(1)
+	c := s.tcpFlows.Add(1)
 
 	s.mu.Lock()
 	h := s.tcpHandler
@@ -186,6 +186,11 @@ func (s *TcpIpStack) HandleTCP(conn adapter.TCPConn) {
 
 	flow := tcpFlowID(conn)
 	uid := resolveFlowUID(uidr, ProtocolTCP, flow)
+
+	if c <= 5 {
+		logf("TcpIpStack: HandleTCP #%d uid=%d %s:%d → %s:%d (handler set: %t)",
+			c, uid, flow.appIP, flow.appPort, flow.serverIP, flow.serverPort, h != nil)
+	}
 
 	if h == nil {
 		// Phase A/B default: log the 5-tuple + UID, drop the connection.

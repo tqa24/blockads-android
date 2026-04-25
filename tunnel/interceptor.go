@@ -33,6 +33,11 @@ type DnsInterceptor struct {
 	// Stats (shared with Engine)
 	totalQueries   *atomic.Int64
 	blockedQueries *atomic.Int64
+
+	// Diagnostic counters for the stack-bridge hot path. Only the
+	// first few hits are logged; counts persist for later inspection.
+	stackPacketsPushed atomic.Int64
+	stackPipeNilDrops  atomic.Int64
 }
 
 // NewDnsInterceptor creates a new DnsInterceptor.
@@ -86,8 +91,16 @@ func (i *DnsInterceptor) Run(tunFile *os.File) {
 			// a data race with Stop() which clears the pipe under
 			// e.mu; the pipe's own Close is panic-free so a stale
 			// pointer + Push is safe.
-			if pipe := i.engine.tcpStackPipe.Load(); pipe != nil {
+			pipe := i.engine.tcpStackPipe.Load()
+			if pipe != nil {
 				pipe.Push(buf[:n])
+				if c := i.stackPacketsPushed.Add(1); c <= 10 {
+					logf("DnsInterceptor: pushed packet #%d to stack (size=%d, version=%d)", c, n, buf[0]>>4)
+				}
+			} else {
+				if c := i.stackPipeNilDrops.Add(1); c <= 5 {
+					logf("DnsInterceptor: stack flag on but pipe nil (drop #%d, size=%d)", c, n)
+				}
 			}
 		} else {
 			// Non-DNS path → route to active outbound adapter

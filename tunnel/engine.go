@@ -1153,23 +1153,35 @@ func (e *Engine) startTcpStackParallel() error {
 }
 
 // runTcpStackOutboundWriter drains outbound packets emitted by the
-// stack and forwards them to the real TUN device.
+// stack and forwards them to the real TUN device. The TUN file is
+// captured once at start so the hot path doesn't acquire e.mu on
+// every packet; if Stop closes the TUN, tun.Write returns an error
+// and the goroutine exits cleanly.
 func (e *Engine) runTcpStackOutboundWriter(p *packetPipe) {
+	e.mu.Lock()
+	tun := e.tunFile
+	e.mu.Unlock()
+	if tun == nil {
+		logf("TcpIpStack: outbound writer started with nil TUN, exiting")
+		return
+	}
+
+	var written, dropped int64
+	defer func() {
+		logf("TcpIpStack: outbound writer stopped (written=%d dropped=%d)", written, dropped)
+	}()
+
 	for {
 		pkt := p.Pop()
 		if pkt == nil {
 			return
 		}
-		e.mu.Lock()
-		tun := e.tunFile
-		e.mu.Unlock()
-		if tun == nil {
-			return
-		}
 		if _, err := tun.Write(pkt); err != nil {
-			logf("TcpIpStack: TUN write error: %v", err)
+			dropped++
+			logf("TcpIpStack: TUN write error after %d packets: %v", written, err)
 			return
 		}
+		written++
 	}
 }
 

@@ -388,6 +388,13 @@ func dialUpstream(flow flowID, hostname string, blocker adBlockChecker, protectF
 // relayDirectFromFlow dials the flow's real destination and pipes
 // bytes bidirectionally. No peek replay — used for gates that trigger
 // before any read.
+//
+// No absolute SetDeadline is applied. tun2socks enables TCP keepalive
+// on the gVisor side (60s idle, 30s interval, 9 probes) which kills
+// genuinely stuck connections, but a healthy long-lived flow (video
+// streaming, large download) is allowed to live as long as the apps
+// need it. The previous 3-minute hard deadline was killing YouTube
+// playback mid-stream and surfacing as ERR_CONNECTION_ABORTED.
 func relayDirectFromFlow(clientConn net.Conn, flow flowID, blocker adBlockChecker, protectFn func(fd int) bool) {
 	remote, err := dialUpstream(flow, "", blocker, protectFn)
 	if err != nil {
@@ -395,8 +402,6 @@ func relayDirectFromFlow(clientConn net.Conn, flow flowID, blocker adBlockChecke
 	}
 	defer remote.Close()
 
-	remote.SetDeadline(time.Now().Add(flowIdleTimeout))
-	clientConn.SetDeadline(time.Now().Add(flowIdleTimeout))
 	bidiCopyFlow(clientConn, remote)
 }
 
@@ -411,9 +416,6 @@ func relayDirectPeeked(clientConn net.Conn, clientReader io.Reader, flow flowID,
 		return
 	}
 	defer remote.Close()
-
-	remote.SetDeadline(time.Now().Add(flowIdleTimeout))
-	clientConn.SetDeadline(time.Now().Add(flowIdleTimeout))
 
 	// client → remote: peeked bytes then stream
 	done := make(chan struct{}, 2)
@@ -522,7 +524,6 @@ func mitmTLSFlow(
 		return
 	}
 	defer serverConn.Close()
-	serverConn.SetDeadline(time.Now().Add(maxConnLifetime))
 
 	// Handshake with the client using our CA-signed cert. If the
 	// client is pinning the real cert it will reject ours; auto-
@@ -541,7 +542,6 @@ func mitmTLSFlow(
 		return
 	}
 	defer clientTLS.Close()
-	clientConn.SetDeadline(time.Now().Add(maxConnLifetime))
 
 	relayHTTPFlow(clientTLS, serverConn, hostname, blocker)
 }
@@ -561,8 +561,6 @@ func mitmHTTPFlow(
 		return
 	}
 	defer serverConn.Close()
-	serverConn.SetDeadline(time.Now().Add(maxConnLifetime))
-	clientConn.SetDeadline(time.Now().Add(maxConnLifetime))
 
 	relayHTTPFlow(&peekReplayConn{Conn: clientConn, r: clientReader}, serverConn, hostname, blocker)
 }

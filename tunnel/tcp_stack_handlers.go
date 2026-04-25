@@ -24,7 +24,6 @@ import (
 
 const (
 	flowDialTimeout = 10 * time.Second
-	flowIdleTimeout = 3 * time.Minute
 )
 
 // newProtectedTcpHandler returns a TcpFlowHandler that forwards the
@@ -54,9 +53,9 @@ func newProtectedTcpHandler(uidr UIDResolver, protectFn func(fd int) bool) TcpFl
 
 		// Idle deadline on both sides so a stalled flow can't hold
 		// stack goroutines forever.
-		remote.SetDeadline(time.Now().Add(flowIdleTimeout))
-		conn.SetDeadline(time.Now().Add(flowIdleTimeout))
-
+		// No absolute deadline — rely on tun2socks' TCP keepalive
+		// (60s idle / 30s interval / 9 probes) to clean up stuck
+		// connections. Hard deadlines killed long-lived streams.
 		bidiCopyFlow(conn, remote)
 	}
 }
@@ -90,9 +89,9 @@ func newProtectedUdpHandler(uidr UIDResolver, protectFn func(fd int) bool) UdpFl
 
 		logf("[TcpStack] UDP uid=%d %s ↔ %s", uid, flow.appIP, dst)
 
-		remote.SetDeadline(time.Now().Add(flowIdleTimeout))
-		conn.SetDeadline(time.Now().Add(flowIdleTimeout))
-
+		// No absolute deadline — rely on tun2socks' TCP keepalive
+		// (60s idle / 30s interval / 9 probes) to clean up stuck
+		// connections. Hard deadlines killed long-lived streams.
 		bidiCopyFlow(conn, remote)
 	}
 }

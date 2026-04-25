@@ -609,18 +609,53 @@ class AdBlockVpnService : VpnService() {
                 b.addRoute("10.255.255.1", 32)
                 b
             } else {
-                // Direct mode — only route DNS traffic
-                Timber.d("Establishing VPN in DNS-only mode")
-                Builder()
+                // Direct mode — DNS-only or DNS+HTTPS filtering.
+                //
+                // When HTTPS filtering is enabled, route ALL traffic
+                // through the TUN so the userspace TCP/IP stack can
+                // terminate every flow and apply per-app MITM. Without
+                // this route, only port-53 DNS reaches the stack and
+                // HTTPS-level filtering (cosmetic CSS injection,
+                // sub-resource ad blocking inside MITM'd connections)
+                // is silently broken — Phase E removed setHttpProxy
+                // which was previously the indirect path that brought
+                // HTTPS into our process.
+                //
+                // When HTTPS filtering is disabled, keep the legacy
+                // DNS-only routing for minimum overhead.
+                Timber.d("Establishing VPN in DNS-only mode (httpsFiltering=$httpsFilteringEnabled)")
+                val b = Builder()
                     .setSession("BlockAds")
                     .addAddress("10.0.0.2", 32)
-                    .addRoute("10.0.0.1", 32)
                     .addDnsServer("10.0.0.1")
                     .addAddress("fd00::2", 128)
-                    .addRoute("fd00::1", 128)
                     .addDnsServer("fd00::1")
                     .setBlocking(true)
                     .setMtu(1500)
+
+                if (httpsFilteringEnabled) {
+                    // Full-route: TCP/UDP flows enter the stack.
+                    b.addRoute("0.0.0.0", 0)
+                    b.addRoute("::", 0)
+
+                    // Exclude LAN/private ranges so local services
+                    // (router admin, printers, devices) stay reachable.
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        try {
+                            b.excludeRoute(android.net.IpPrefix(java.net.InetAddress.getByName("10.0.0.0"), 8))
+                            b.excludeRoute(android.net.IpPrefix(java.net.InetAddress.getByName("172.16.0.0"), 12))
+                            b.excludeRoute(android.net.IpPrefix(java.net.InetAddress.getByName("192.168.0.0"), 16))
+                            b.excludeRoute(android.net.IpPrefix(java.net.InetAddress.getByName("169.254.0.0"), 16))
+                        } catch (e: Exception) {
+                            Timber.w(e, "Failed to exclude LAN routes")
+                        }
+                    }
+                } else {
+                    // DNS-only routes (legacy minimal mode).
+                    b.addRoute("10.0.0.1", 32)
+                    b.addRoute("fd00::1", 128)
+                }
+                b
             }
 
             // HTTPS filtering no longer relies on VpnService.setHttpProxy.

@@ -1178,6 +1178,14 @@ func (e *Engine) runTcpStackOutboundWriter(p *packetPipe) {
 // the userspace stack.
 const defaultTunMTU = 1500
 
+// localAssetSynthIP is the synthetic IPv4 address handed out for
+// resolution of LocalAssetHost. RFC 5737 reserves 198.51.100.0/24 for
+// documentation use; nothing in production routes there, so the
+// browser SYN unambiguously enters our TUN where the userspace stack
+// catches it and dispatches to mitm_handler's local-asset branch
+// based on the SNI.
+var localAssetSynthIP = net.IPv4(198, 51, 100, 1)
+
 // IsMitmActive returns true when the HTTPS MITM filter is active
 // (stack handler registered with cert manager + filter).
 func (e *Engine) IsMitmActive() bool {
@@ -1338,6 +1346,18 @@ func (e *Engine) handleDNSQuery(queryInfo *DNSQueryInfo) {
 
 	startTime := time.Now()
 	domain := strings.ToLower(queryInfo.Domain)
+
+	// Local asset host: synthesize a response with a routable IP from
+	// the RFC 5737 documentation range so the browser can SYN to it
+	// and have the packet enter our TUN. The userspace stack catches
+	// the flow and serves cosmetic.css from memory based on SNI. This
+	// replaces the legacy CONNECT-via-setHttpProxy path.
+	if domain == LocalAssetHost {
+		response := BuildRedirectResponse(queryInfo, localAssetSynthIP)
+		e.writeToTUN(response)
+		e.totalQueries.Add(1)
+		return
+	}
 
 	// Fetch App Name for logging (and firewall)
 	appName := ""

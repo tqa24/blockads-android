@@ -5,18 +5,24 @@ import (
 )
 
 // ─────────────────────────────────────────────────────────────────────────────
-// scriptlet_parser.go — parses EasyList +js() rules.
+// scriptlet_parser.go — parses scriptlet rules from filter lists.
 //
-// Supported rule formats:
-//   ##+js(name)
-//   ##+js(name, arg1)
-//   ##+js(name, arg1, arg2)
-//   domain1.com,domain2.com##+js(name, args)
-//   ~excluded.com##+js(name, args)
+// Two dialect formats are recognised:
 //
-// We are deliberately lenient: invalid rules are skipped silently
-// rather than failing the whole filter list. uBlock-style snippets
-// (e.g., ##+js(scriptlet:something)) are unsupported and skipped.
+//   uBlock Origin style:
+//     ##+js(name, arg1, arg2)
+//     domain1.com,domain2.com##+js(name, args)
+//
+//   AdGuard native style:
+//     #%#//scriptlet('name', 'arg1', 'arg2')
+//     domain1.com,domain2.com#%#//scriptlet("name", "args")
+//
+// AdGuard filters (filter list IDs 2/11/14 from filters.adtidy.org)
+// use the second form exclusively; uBlock exports use the first. Both
+// engines recognise the other's syntax in practice, so we accept both.
+//
+// Invalid rules are skipped silently rather than failing the whole
+// filter list.
 // ─────────────────────────────────────────────────────────────────────────────
 
 // parseScriptletRules takes the raw text of a filter list and extracts
@@ -40,22 +46,31 @@ func parseScriptletRules(content string) []ScriptletRule {
 }
 
 // parseOneScriptletRule parses a single line. Returns (rule, true) on
-// success or zero value + false otherwise.
+// success or zero value + false otherwise. Recognises both uBlock
+// (##+js) and AdGuard (#%#//scriptlet) syntaxes; exception variants
+// (#@#+js, #@%#//scriptlet) are deliberately ignored.
 func parseOneScriptletRule(line string) (ScriptletRule, bool) {
-	// Find the "##+js(" anchor. EasyList also uses "#@#+js(" for
-	// exception rules — we ignore those (no current call-site to apply
-	// negative scriptlets).
-	idx := strings.Index(line, "##+js(")
-	if idx < 0 {
+	var domainsStr, body string
+
+	if idx := strings.Index(line, "##+js("); idx >= 0 {
+		domainsStr = line[:idx]
+		rest := line[idx+len("##+js("):]
+		closeIdx := strings.LastIndex(rest, ")")
+		if closeIdx < 0 {
+			return ScriptletRule{}, false
+		}
+		body = rest[:closeIdx]
+	} else if idx := strings.Index(line, "#%#//scriptlet("); idx >= 0 {
+		domainsStr = line[:idx]
+		rest := line[idx+len("#%#//scriptlet("):]
+		closeIdx := strings.LastIndex(rest, ")")
+		if closeIdx < 0 {
+			return ScriptletRule{}, false
+		}
+		body = rest[:closeIdx]
+	} else {
 		return ScriptletRule{}, false
 	}
-	domainsStr := line[:idx]
-	rest := line[idx+len("##+js("):]
-	closeIdx := strings.LastIndex(rest, ")")
-	if closeIdx < 0 {
-		return ScriptletRule{}, false
-	}
-	body := rest[:closeIdx]
 
 	// Split body by comma — naive but matches AdGuard's parser for
 	// scriptlets that don't take comma-bearing args (the common case).

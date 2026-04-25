@@ -628,15 +628,21 @@ class AdBlockVpnService : VpnService() {
                     .setSession("BlockAds")
                     .addAddress("10.0.0.2", 32)
                     .addDnsServer("10.0.0.1")
-                    .addAddress("fd00::2", 128)
-                    .addDnsServer("fd00::1")
                     .setBlocking(true)
                     .setMtu(1500)
 
                 if (httpsFilteringEnabled) {
-                    // Full-route: TCP/UDP flows enter the stack.
+                    // Full-route IPv4 only. We deliberately omit IPv6
+                    // here: many mobile carrier networks lack v6
+                    // connectivity, so even though the device thinks
+                    // it has v6 via this VPN, the Go tunnel process's
+                    // outbound v6 dials would fail with "network is
+                    // unreachable" and stall apps that don't fall
+                    // back to v4 (Facebook Messenger XMPP, push
+                    // services, etc.) and slow down those that do.
+                    // Browsers that prefer v6 will see no AAAA route
+                    // and use v4 cleanly.
                     b.addRoute("0.0.0.0", 0)
-                    b.addRoute("::", 0)
 
                     // Exclude LAN/private ranges so local services
                     // (router admin, printers, devices) stay reachable.
@@ -660,9 +666,10 @@ class AdBlockVpnService : VpnService() {
                     // specific addRoute wins over an excludeRoute on
                     // VpnService.Builder regardless of call order.
                     b.addRoute("10.0.0.1", 32)
-                    b.addRoute("fd00::1", 128)
                 } else {
                     // DNS-only routes (legacy minimal mode).
+                    b.addAddress("fd00::2", 128)
+                    b.addDnsServer("fd00::1")
                     b.addRoute("10.0.0.1", 32)
                     b.addRoute("fd00::1", 128)
                 }

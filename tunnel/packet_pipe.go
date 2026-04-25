@@ -3,6 +3,7 @@ package tunnel
 import (
 	"io"
 	"sync"
+	"sync/atomic"
 )
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -47,6 +48,13 @@ type packetPipe struct {
 
 	done     chan struct{}
 	doneOnce sync.Once
+
+	// Diagnostic counters. inboundDropped: pushed but queue full.
+	// outboundDropped: written by stack but queue full (means the
+	// outbound writer can't keep up with TUN.Write).
+	inboundDropped  atomic.Int64
+	outboundDropped atomic.Int64
+	outboundWritten atomic.Int64
 }
 
 func newPacketPipe() *packetPipe {
@@ -83,9 +91,17 @@ func (p *packetPipe) Write(buf []byte) (int, error) {
 	}
 	select {
 	case p.outbound <- pkt:
+		c := p.outboundWritten.Add(1)
+		if c <= 5 {
+			logf("packetPipe: outbound write #%d (size=%d)", c, len(buf))
+		}
 	case <-p.done:
 	default:
 		// queue full; drop.
+		c := p.outboundDropped.Add(1)
+		if c <= 3 {
+			logf("packetPipe: outbound DROPPED #%d (queue full, size=%d)", c, len(buf))
+		}
 	}
 	return len(buf), nil
 }
@@ -106,6 +122,10 @@ func (p *packetPipe) Push(pkt []byte) {
 	case <-p.done:
 	default:
 		// queue full; drop.
+		c := p.inboundDropped.Add(1)
+		if c <= 3 {
+			logf("packetPipe: inbound DROPPED #%d (queue full, size=%d)", c, len(pkt))
+		}
 	}
 }
 

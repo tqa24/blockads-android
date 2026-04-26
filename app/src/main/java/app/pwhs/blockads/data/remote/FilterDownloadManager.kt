@@ -52,8 +52,8 @@ class FilterDownloadManager(
             }
 
             var scriptletPath: String? = null
-            if (filter.scriptletUrl.isNotEmpty()) {
-                scriptletPath = downloadFile(filter.scriptletUrl, scriptletFile, forceUpdate)
+            if (filter.scriptletsUrl.isNotEmpty()) {
+                scriptletPath = downloadFile(filter.scriptletsUrl, scriptletFile, forceUpdate)
             }
 
             if (bloomPath != null && triePath != null) {

@@ -178,7 +178,7 @@ class FilterListRepository(
                         existing.bloomUrl != remote.bloomUrl ||
                         existing.trieUrl != remote.trieUrl ||
                         existing.cssUrl != (remote.cssUrl ?: "") ||
-                        existing.scriptletUrl != (remote.scriptletUrl ?: "") ||
+                        existing.scriptletsUrl != (remote.scriptletsUrl ?: "") ||
                         existing.ruleCount != remote.ruleCount ||
                         existing.domainCount != remote.ruleCount ||
                         existing.originalUrl != (remote.originalUrl ?: existing.originalUrl) ||
@@ -194,7 +194,7 @@ class FilterListRepository(
                                 trieUrl = remote.trieUrl,
                                 domainCount = remote.ruleCount,
                                 cssUrl = remote.cssUrl ?: "",
-                                scriptletUrl = remote.scriptletUrl ?: "",
+                                scriptletsUrl = remote.scriptletsUrl ?: "",
                                 ruleCount = remote.ruleCount,
                                 originalUrl = remote.originalUrl ?: existing.originalUrl,
                                 isBuiltIn = true
@@ -215,7 +215,7 @@ class FilterListRepository(
                             bloomUrl = remote.bloomUrl,
                             trieUrl = remote.trieUrl,
                             cssUrl = remote.cssUrl ?: "",
-                            scriptletUrl = remote.scriptletUrl ?: "",
+                            scriptletsUrl = remote.scriptletsUrl ?: "",
                             originalUrl = remote.originalUrl ?: ""
                         )
                     )
@@ -282,7 +282,7 @@ class FilterListRepository(
                         bloomUrl = bloomUrl,
                         trieUrl = trieUrl,
                         cssUrl = extractString("cssUrl"),
-                        scriptletUrl = extractString("scriptletUrl"),
+                        scriptletsUrl = extractString("scriptletsUrl"),
                         originalUrl = extractString("originalUrl")
                     )
                 )
@@ -383,7 +383,7 @@ class FilterListRepository(
                 val sb = StringBuilder()
                 var added = 0
                 for (filter in validLists) {
-                    if (filter.scriptletUrl.isEmpty()) continue
+                    if (filter.scriptletsUrl.isEmpty()) continue
                     val f = File(context.filesDir, "remote_filters/${filter.id}.scriptlets")
                     if (f.exists() && f.length() > 0) {
                         sb.append(f.readText())
